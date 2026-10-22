@@ -80,3 +80,73 @@ def test_micropython_firmware():
     assert "def get_distance_cm" in code
     assert "[POST] Power-On Self-Test" in code
     assert "time.sleep(1.0)" in code
+
+
+def test_component_test_guides_follow_generated_pins_and_flag_esp32_echo():
+    parts = {
+        "controller": {"role": "controller", "name": "ESP32 DevKit", "id": "ctrl_esp32"},
+        "sensor": {"role": "sensor", "name": "HC-SR04 ultrasonic", "id": "sen_hcsr04"},
+        "display": {"role": "display", "name": "SSD1306 OLED", "id": "disp_oled"},
+    }
+    generated = wiring.generate_wiring(parts, "Distance Meter")
+    guides = firmware.component_test_guides(parts, generated["connections"], generated["controller"])
+    ultrasonic = next(guide for guide in guides if guide["id"] == "sen_hcsr04")
+    oled = next(guide for guide in guides if guide["id"] == "disp_oled")
+
+    assert ultrasonic["supported"]
+    assert "#define TRIG_PIN 5" in ultrasonic["code"]
+    assert "#define ECHO_PIN 18" in ultrasonic["code"]
+    assert "5 V" in ultrasonic["safety"] and "3.3 V GPIO" in ultrasonic["safety"]
+    assert "Distance:" in ultrasonic["expected"]
+    assert oled["supported"]
+    assert "#define SDA_PIN 21" in oled["code"]
+    assert "#define SCL_PIN 22" in oled["code"]
+    assert "Adafruit SSD1306" in oled["library"]
+    assert "FORGE display test" in oled["expected"]
+
+
+def test_component_test_guide_fails_closed_for_unsupported_parts():
+    parts = {
+        "controller": {"role": "controller", "name": "Arduino Nano", "id": "ctrl_nano"},
+        "camera": {"role": "camera", "name": "Unknown camera module", "id": "camera_unknown"},
+    }
+    generated = wiring.generate_wiring(parts, "Camera Build")
+    guides = firmware.component_test_guides(parts, generated["connections"], generated["controller"])
+    camera = next(guide for guide in guides if guide["id"] == "camera_unknown")
+
+    assert not camera["supported"]
+    assert camera["code"] == ""
+    assert "No isolated test sketch is available" in camera["expected"]
+
+
+def test_line_sensor_and_motor_guides_use_bom_wiring_and_safe_test():
+    parts = {
+        "controller": {"role": "controller", "name": "Arduino Nano", "id": "ctrl_nano"},
+        "driver": {"role": "driver", "name": "L298N driver", "id": "drv_l298n"},
+        "motor": {"role": "motor", "name": "N20 6V gear motor", "id": "mot_n20"},
+        "sensor": {"role": "sensor", "name": "5-channel line array", "id": "sen_line5"},
+    }
+    generated = wiring.generate_wiring(parts, "Line Follower")
+    guides = firmware.component_test_guides(parts, generated["connections"], generated["controller"])
+    motor = next(guide for guide in guides if guide["id"] == "mot_n20")
+    sensor = next(guide for guide in guides if guide["id"] == "sen_line5")
+
+    assert motor["supported"]
+    assert "const int MOTOR_PWM = 5" in motor["code"]
+    assert "const int MOTOR_IN_A = 7" in motor["code"]
+    assert "analogWrite(MOTOR_PWM, 64)" in motor["code"]
+    assert "never connect a motor directly to an MCU pin" in motor["safety"]
+    assert sensor["supported"]
+    assert "const int sensorPins[] = {A0, A1, A2, A3, A6}" in sensor["code"]
+    assert "S1...S5" in sensor["expected"]
+
+
+def test_oled_guide_uses_board_specific_i2c_init():
+    for controller, expected in (("ctrl_nano", "Wire.begin();"), ("ctrl_esp32", "Wire.begin(21, 22);")):
+        parts = {
+            "controller": {"role": "controller", "name": "Arduino Nano" if controller == "ctrl_nano" else "ESP32 DevKit", "id": controller},
+            "display": {"role": "display", "name": "SSD1306 OLED", "id": "disp_oled"},
+        }
+        generated = wiring.generate_wiring(parts, "Display Test")
+        guide = firmware.component_test_guides(parts, generated["connections"], generated["controller"])[0]
+        assert expected in guide["code"]

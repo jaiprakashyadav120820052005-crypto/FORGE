@@ -28,6 +28,7 @@ def get_wiring_data(forge_session: Optional[str] = Cookie(None)):
 
     ard_res = firmware.generate_arduino_firmware(parts_dict, conns, ctrl, label)
     mpy_res = firmware.generate_micropython_firmware(parts_dict, conns, ctrl, label)
+    component_tests = firmware.component_test_guides(parts_dict, conns, ctrl)
 
     arduino_code = ard_res.get("code", "") if isinstance(ard_res, dict) else str(ard_res)
     micropython_code = mpy_res.get("code", "") if isinstance(mpy_res, dict) else str(mpy_res)
@@ -41,6 +42,7 @@ def get_wiring_data(forge_session: Optional[str] = Cookie(None)):
         "svg_canvas": data.get("svg_canvas", ""),
         "arduino_code": arduino_code,
         "micropython_code": micropython_code,
+        "component_tests": component_tests,
         "label": label,
     }
 

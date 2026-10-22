@@ -2159,6 +2159,101 @@ input[type="radio"] {
   font-size: 0.8rem;
 }
 
+/* Three-flow workspace and first-power build guide */
+.workflow-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr);
+  align-items: center;
+  margin: 0 0 1.5rem;
+  padding: 8px 0 14px;
+  border-bottom: 1px solid var(--card-border-subtle);
+}
+
+.workflow-nav[hidden] { display: none; }
+
+.workflow-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.workflow-step:disabled { opacity: 0.45; cursor: not-allowed; }
+.workflow-step.is-current { color: var(--text-primary); border-color: var(--card-border); background: var(--primary-orange-subtle); }
+.workflow-step.is-complete:not(.is-current) .workflow-step-number { color: var(--status-pass); border-color: var(--status-pass-border); }
+.workflow-step-number { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid var(--card-border-subtle); color: var(--primary-orange-light); font: 600 0.78rem var(--font-mono); }
+.workflow-step b, .workflow-step small { display: block; }
+.workflow-step b { color: inherit; font-size: 0.9rem; }
+.workflow-step small { margin-top: 2px; color: var(--text-muted); font-size: 0.73rem; }
+.workflow-connector { height: 1px; background: var(--card-border-subtle); }
+
+.build-view { display: grid; gap: 16px; }
+.build-view-heading, .build-section-heading, .build-first-power-gate { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.build-view-heading { margin-bottom: 4px; }
+.build-view-heading h2 { margin: 3px 0 6px; }
+.build-section { padding: 18px; border-top: 1px solid var(--card-border-subtle); background: rgba(12, 18, 32, 0.58); }
+.build-section-heading { justify-content: flex-start; margin-bottom: 16px; }
+.build-section-heading h3 { margin: 0 0 4px; font-size: 1.12rem; }
+.build-section-index { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid var(--card-border); color: var(--primary-orange-light); font: 600 0.78rem var(--font-mono); }
+.build-risk-banner, .build-signal-warning, .build-stop-note { padding: 14px 16px; border-left: 3px solid var(--status-warn); background: var(--status-warn-bg); color: var(--text-secondary); line-height: 1.55; }
+.build-risk-banner b, .build-signal-warning b, .build-stop-note b { display: block; margin-bottom: 4px; color: var(--text-primary); }
+.build-signal-warning { border-color: var(--status-fail); background: var(--status-fail-bg); color: #ffd7d8; }
+.build-stop-note { border-color: var(--status-fail); background: rgba(229, 72, 77, 0.1); }
+.build-checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.build-check-row, .build-wire-row { display: flex; align-items: flex-start; gap: 11px; padding: 12px; border: 1px solid var(--card-border-subtle); background: rgba(255,255,255,0.018); color: var(--text-secondary); line-height: 1.45; cursor: pointer; }
+.build-check-row input, .build-wire-row input { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 1px; accent-color: var(--status-pass); }
+.build-check-row:has(input:checked), .build-wire-row:has(input:checked) { border-color: var(--status-pass-border); background: var(--status-pass-bg); }
+.build-measurement { display: grid; gap: 7px; max-width: 520px; margin-top: 16px; }
+.build-measurement input { max-width: 240px; }
+.build-subheading { margin: 12px 0 8px; font-size: 0.94rem; }
+.build-wire-list { display: grid; gap: 6px; padding: 0; list-style: none; }
+.build-wire-row b, .build-wire-row small { display: block; }
+.build-wire-row b { color: var(--text-primary); font-size: 0.86rem; }
+.build-wire-row small { margin-top: 4px; color: var(--text-muted); font-size: 0.78rem; }
+.build-first-power-gate { align-items: center; margin-top: 14px; padding: 14px; border: 1px solid var(--card-border-subtle); background: rgba(0,0,0,0.18); }
+.build-first-power-gate p { margin-top: 4px; }
+.build-first-power-gate button:disabled { opacity: 0.55; cursor: not-allowed; }
+.build-later-stage { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--card-border-subtle); }
+.build-stage-complete { margin-top: 10px; color: var(--text-secondary); }
+.build-resources { display: grid; gap: 16px; }
+.build-resources > .card, .build-resources > section { margin-top: 0 !important; }
+
+.component-testbench { display: grid; gap: 14px; margin-top: 12px; }
+.component-testbench-controls { display: grid; grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr); gap: 12px; }
+.component-testbench-controls label { color: var(--text-secondary); font-size: 0.88rem; }
+.component-testbench-controls select { min-height: 42px; }
+.component-test-status { min-height: 1.2em; color: var(--text-muted); }
+.component-test-grid { display: grid; grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.4fr); gap: 12px; }
+.component-test-panel, .component-test-result { min-width: 0; padding: 14px; border: 1px solid var(--card-border-subtle); background: rgba(0,0,0,0.18); }
+.component-test-panel h5, .component-test-result h5 { margin: 0 0 10px; color: var(--text-primary); font-size: 0.92rem; }
+.component-test-wiring { display: grid; gap: 8px; padding-left: 22px; color: var(--text-secondary); font-size: 0.84rem; line-height: 1.45; }
+.component-test-wiring li { padding-left: 3px; }
+.component-test-code-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.component-test-code { max-height: 420px; overflow: auto; padding: 12px; border: 1px solid rgba(255,255,255,0.08); background: #05060A; color: #A7F3D0; font: 0.78rem/1.5 var(--font-mono); white-space: pre; tab-size: 2; }
+.component-test-safety { margin-top: 12px; padding: 10px; border-left: 3px solid var(--status-warn); background: var(--status-warn-bg); color: var(--text-secondary); font-size: 0.82rem; line-height: 1.45; }
+.component-test-result { border-left: 3px solid var(--status-pass); }
+.component-test-result p + p { margin-top: 8px; }
+.component-test-disclaimer { line-height: 1.5; }
+
+@media (max-width: 640px) {
+  .workflow-nav { grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr) 12px minmax(0, 1fr); }
+  .workflow-step { flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 4px; }
+  .workflow-step-number { width: 28px; height: 28px; flex-basis: 28px; }
+  .workflow-step b { font-size: 0.76rem; }
+  .workflow-step small { font-size: 0.65rem; line-height: 1.25; }
+  .build-view-heading, .build-first-power-gate { flex-direction: column; align-items: stretch; }
+  .build-checklist { grid-template-columns: 1fr; }
+  .build-section { padding: 14px 10px; }
+  .component-testbench-controls, .component-test-grid { grid-template-columns: 1fr; }
+  .component-test-code { max-height: 340px; }
+}
+
 @media (max-width: 768px) {
   .recommendation-context-grid { grid-template-columns: 1fr; }
   .completed-project-field { grid-column: auto; }

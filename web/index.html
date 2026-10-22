@@ -23,6 +23,20 @@
       </div>
     </header>
 
+    <nav id="workflow-nav" class="workflow-nav" aria-label="Build workflow" hidden>
+      <button class="workflow-step" type="button" data-flow-go="recommend">
+        <span class="workflow-step-number">01</span><span><b>Recommend</b><small>Choose a project</small></span>
+      </button>
+      <span class="workflow-connector" aria-hidden="true"></span>
+      <button class="workflow-step" type="button" data-flow-go="source">
+        <span class="workflow-step-number">02</span><span><b>BOM &amp; sourcing</b><small>Plan and price parts</small></span>
+      </button>
+      <span class="workflow-connector" aria-hidden="true"></span>
+      <button class="workflow-step" type="button" data-flow-go="build" disabled title="Generate a BOM first">
+        <span class="workflow-step-number">03</span><span><b>Build guide</b><small>Wire and verify</small></span>
+      </button>
+    </nav>
+
     <!-- Portal and workflows are separate view sections so each entry path can evolve independently. -->
     <main id="app-viewport">
       <section id="view-home" class="view-panel">
@@ -491,7 +505,40 @@
             <textarea id="wokwi-json-preview" readonly style="width:100%;height:140px;background:#05060A;border:1px solid var(--card-border);border-radius:8px;font-family:var(--font-mono);font-size:0.75rem;color:#A7F3D0;padding:8px;"></textarea>
           </div>
           <div id="tab-content-firmware" class="wiring-tab-pane" style="display:none;">
-            <pre id="firmware-code-preview" style="background:#05060A;padding:12px;border-radius:8px;font-size:0.78rem;color:#38BDF8;overflow-x:auto;max-height:280px;"></pre>
+            <div class="component-testbench">
+              <div class="component-testbench-controls">
+                <label for="component-test-select"><b>Test one BOM component</b>
+                  <select id="component-test-select" style="display:block;width:100%;margin-top:6px;"></select>
+                </label>
+                <label for="component-test-language"><b>Code target</b>
+                  <select id="component-test-language" style="display:block;width:100%;margin-top:6px;">
+                    <option value="arduino">Arduino IDE · .ino</option>
+                  </select>
+                </label>
+              </div>
+              <div id="component-test-status" class="caption" role="status" aria-live="polite"></div>
+              <div class="component-test-grid">
+                <section class="component-test-panel">
+                  <h5>Wire this component</h5>
+                  <ol id="component-test-wiring" class="component-test-wiring"></ol>
+                  <p id="component-test-safety" class="component-test-safety" hidden></p>
+                </section>
+                <section class="component-test-panel">
+                  <div class="component-test-code-heading">
+                    <h5>Test sketch</h5>
+                    <button class="btn btn-sm" id="btn-copy-component-test" type="button" title="Copy test sketch">Copy code</button>
+                  </div>
+                  <pre id="component-test-code" class="component-test-code"></pre>
+                </section>
+              </div>
+              <section class="component-test-result">
+                <h5>Expected outcome</h5>
+                <p id="component-test-expected" class="caption"></p>
+                <p id="component-test-steps" class="caption"></p>
+              </section>
+              <p class="caption component-test-disclaimer">Component-level tests isolate one part; verify exact board/module revisions and electrical limits first. These generated assignments follow FORGE's wiring map and are not datasheet-verified.</p>
+            </div>
+            <pre id="firmware-code-preview" hidden></pre>
           </div>
         </div>
 
@@ -540,6 +587,61 @@
             </div>
           </details>
         </section>
+      </section>
+
+      <section id="view-build" class="view-panel build-view" data-feature="workflow" style="display:none;">
+        <div class="build-view-heading">
+          <div>
+            <p class="eyebrow">FLOW 03 · BUILD &amp; VERIFY</p>
+            <h2 id="build-project-heading">Build Guide</h2>
+            <p class="caption">Use the active BOM, inspect the exact part variants, then wire one stage at a time.</p>
+          </div>
+          <button class="btn" id="btn-build-back-to-source" type="button">Back to BOM &amp; sourcing</button>
+        </div>
+
+        <div class="build-risk-banner" role="note">
+          <b>Risk-reduction guide, not a safety certification.</b>
+          FORGE's generated wiring and typical component specs may not match the exact board revision you received. Verify pin limits and electrical ratings against the manufacturer's documentation before connecting power.
+        </div>
+        <div id="build-signal-warning" class="build-signal-warning" role="alert" hidden></div>
+
+        <section class="build-section" aria-labelledby="build-preflight-heading">
+          <div class="build-section-heading">
+            <span class="build-section-index">01</span>
+            <div><h3 id="build-preflight-heading">Before touching a wire</h3><p class="caption">Complete these checks with all power disconnected.</p></div>
+          </div>
+          <div id="build-preflight-list" class="build-checklist"></div>
+          <div class="build-measurement">
+            <label for="build-rail-reading"><b>Measured controller logic rail (V)</b></label>
+            <p id="build-rail-range" class="caption">Expected range is shown from FORGE's typical profile; verify it for your exact board.</p>
+            <input id="build-rail-reading" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Measure at the 3V3 or 5V pin">
+          </div>
+        </section>
+
+        <section class="build-section" aria-labelledby="build-wiring-heading">
+          <div class="build-section-heading">
+            <span class="build-section-index">02</span>
+            <div><h3 id="build-wiring-heading">Wire in stages, with power off</h3><p class="caption">Tick each connection only after checking both printed pin labels. The sequence keeps motors and high-current loads disconnected during the first controller check.</p></div>
+          </div>
+          <h4 class="build-subheading">Stage A · Ground, logic rails, and signals</h4>
+          <ol id="build-wiring-stage-one" class="build-wire-list"></ol>
+          <div class="build-first-power-gate">
+            <div><b>First-power checkpoint · controller and logic only</b><p id="build-gate-status" class="caption" role="status" aria-live="polite">Complete the checks above before continuing.</p></div>
+            <button class="btn primary" id="btn-build-first-power" type="button" disabled>Complete first-power checks</button>
+          </div>
+          <div id="build-stage-two" class="build-later-stage" hidden>
+            <h4 class="build-subheading">Stage B · Motors and high-current loads</h4>
+            <p class="caption">After the controller and sensors pass their initial check: disconnect power, connect the load wiring, lift wheels clear of the table, then verify driver and battery ratings before testing movement.</p>
+            <ol id="build-wiring-stage-two" class="build-wire-list"></ol>
+            <p class="build-stage-complete" id="build-stage-two-status" role="status"></p>
+          </div>
+        </section>
+
+        <div class="build-stop-note" role="alert">
+          <b>STOP immediately:</b> if anything smokes, smells burnt, becomes unexpectedly hot, resets repeatedly, draws unexpected current, or a measured voltage is out of range, disconnect power. Do not continue troubleshooting while energized.
+        </div>
+
+        <section id="build-resource-mount" class="build-resources" aria-label="Build references"></section>
       </section>
     </main>
   </div>

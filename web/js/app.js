@@ -32,7 +32,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     optimizerLoadId: 0,
     optimizerStagedFixes: new Set(),
     optimizerViewMode: 'cards',
-    wiringData: null
+    wiringData: null,
+    componentTests: [],
+    buildProgressKey: null,
+    buildProgress: { preflight: {}, wires: {}, measuredRail: '', firstPowerCleared: false },
+    buildRailRange: null
   };
   const stageHistory = [];
 
@@ -56,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Set initial view
+  mountBuildResources();
   switchStage(state.stage);
 
   // ── Navigation ──
@@ -69,7 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function switchStage(stageName, { recordHistory = true, bomMode = 'setup' } = {}) {
     if (stageName === 'pick') stageName = 'discovery';
-    const validStages = ['home', 'discovery', 'results', 'competition', 'stars', 'bom'];
+    const validStages = ['home', 'discovery', 'results', 'competition', 'stars', 'bom', 'build'];
     if (!validStages.includes(stageName)) {
       console.error(`Unknown FORGE view: ${stageName}`);
       return;
@@ -77,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (recordHistory && stageName !== state.stage) stageHistory.push(state.stage);
     state.stage = stageName;
     document.getElementById('btn-universal-back').hidden = stageName === 'home';
+    document.getElementById('workflow-nav').hidden = stageName === 'home';
     document.querySelectorAll('#app-viewport > .view-panel').forEach(view => {
       view.style.display = 'none';
     });
@@ -89,7 +95,205 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('bom-setup-panel').hidden = bomMode === 'guided';
       if (!state.activeBom) loadInitialBom();
     }
+    if (stageName === 'build') renderBuildGuide();
+    updateWorkflowNavigation();
   }
+
+  const flowTargets = { recommend: 'discovery', source: 'bom', build: 'build' };
+  document.querySelectorAll('[data-flow-go]').forEach(button => {
+    button.addEventListener('click', () => {
+      const target = flowTargets[button.dataset.flowGo];
+      if (target) switchStage(target);
+    });
+  });
+
+  document.getElementById('btn-build-back-to-source')?.addEventListener('click', () => switchStage('bom'));
+
+  function updateWorkflowNavigation() {
+    const current = ['discovery', 'results', 'competition', 'stars'].includes(state.stage)
+      ? 'recommend'
+      : state.stage === 'build' ? 'build' : 'source';
+    document.querySelectorAll('[data-flow-go]').forEach(button => {
+      const isCurrent = button.dataset.flowGo === current;
+      button.classList.toggle('is-current', isCurrent);
+      button.classList.toggle('is-complete', button.dataset.flowGo !== 'build' && Boolean(state.activeBom));
+      if (button.dataset.flowGo === 'build') {
+        button.disabled = !state.activeBom || !state.activeBom.parts_count;
+        button.title = button.disabled ? 'Generate a BOM first' : 'Open the build and verification guide';
+      }
+      if (isCurrent) button.setAttribute('aria-current', 'step');
+      else button.removeAttribute('aria-current');
+    });
+  }
+
+  function mountBuildResources() {
+    const target = document.getElementById('build-resource-mount');
+    if (!target) return;
+    ['specs-studio-card', 'wiring-studio-card'].forEach(id => {
+      const resource = document.getElementById(id);
+      if (resource) target.appendChild(resource);
+    });
+  }
+
+  function syncBuildProgress() {
+    const parts = Object.entries(state.activeBom?.parts || {})
+      .filter(([, part]) => part && !part.none)
+      .map(([role, part]) => `${role}:${part.id}:${part.qty || 1}`)
+      .sort();
+    const key = `forge-build:${state.activeBom?.project || ''}:${parts.join('|')}`;
+    if (key === state.buildProgressKey) return;
+    state.buildProgressKey = key;
+    try {
+      state.buildProgress = JSON.parse(localStorage.getItem(key) || 'null') || {
+        preflight: {}, wires: {}, measuredRail: '', firstPowerCleared: false
+      };
+    } catch (err) {
+      state.buildProgress = { preflight: {}, wires: {}, measuredRail: '', firstPowerCleared: false };
+    }
+  }
+
+  function saveBuildProgress() {
+    if (!state.buildProgressKey) return;
+    try { localStorage.setItem(state.buildProgressKey, JSON.stringify(state.buildProgress)); }
+    catch (err) { console.warn('Could not save local build checklist progress:', err); }
+  }
+
+  function renderBuildGuide() {
+    const bom = state.activeBom;
+    if (!bom) {
+      updateWorkflowNavigation();
+      return;
+    }
+    syncBuildProgress();
+
+    const heading = document.getElementById('build-project-heading');
+    if (heading) heading.textContent = `${bom.label || 'Project'} · Build & Verify`;
+
+    const parts = Object.entries(bom.parts || {}).filter(([, part]) => part && !part.none);
+    const controllerEntry = parts.find(([role, part]) => role === 'controller' || part.role === 'controller');
+    const controller = controllerEntry?.[1];
+    const controllerSpecs = controller?.specs || {};
+    const logicVoltage = Number(controllerSpecs.logic_v);
+    const sensors = parts.filter(([role, part]) => role === 'sensor' || part.role === 'sensor').map(([, part]) => part);
+    const logicFailure = (bom.checks || []).some(check => check.id === 'logic_level' && check.status === 'FAIL');
+    const signalRisk = (Number.isFinite(logicVoltage) && logicVoltage <= 3.3 && sensors.length > 0) || logicFailure;
+    const hasHcSr04 = sensors.some(part => /hc.?sr04|ultrasonic/i.test(`${part.id} ${part.name}`));
+    const signalWarning = document.getElementById('build-signal-warning');
+    if (signalWarning) {
+      signalWarning.hidden = !signalRisk;
+      signalWarning.innerHTML = signalRisk
+        ? `<b>Potential signal-voltage hazard.</b> ${escapeHtml(controller?.name || 'This controller')} uses ${Number.isFinite(logicVoltage) ? `${logicVoltage} V` : 'a low-voltage'} logic, but FORGE does not have verified per-pin output limits for the exact sensor variant. ${hasHcSr04 ? 'HC-SR04 ECHO is typically 5 V: do not connect it directly to an ESP32 GPIO; use a correctly rated divider or level shifter and verify the module datasheet.' : 'Check each sensor output-high voltage against the exact controller GPIO absolute maximum; add a divider or level shifter where required.'} The generated wiring is not proof that signal conditioning is present.`
+        : '';
+    }
+
+    const preflight = [
+      ['identity', 'Match every board and module marking to the BOM. Do not substitute a different variant without rechecking its ratings.'],
+      ['datasheets', 'Check the exact controller GPIO voltage limits and each sensor output-high voltage in manufacturer documentation. FORGE values are typical team-entered data, not verified for your physical part.'],
+      ['tools', 'Have a multimeter, insulated work surface, and the correct rated power supply available.'],
+      ['power-off', 'Disconnect both battery and USB before wiring or changing any connection.'],
+      ['polarity', 'Confirm battery, regulator, and electrolytic capacitor polarity against the printed + / - marks.'],
+      ['shorts', 'Inspect for bridges and loose strands; with power off, check for unintended rail-to-ground shorts against the circuit reference.'],
+      ['loads-off', 'Leave motor, servo, solenoid, and other high-current supplies disconnected during the first controller-and-sensor check.'],
+      [signalRisk ? 'signal-protection' : 'signal-review', signalRisk
+        ? 'I verified the exact sensor output level and installed a correctly rated divider or level shifter wherever a signal could exceed the controller GPIO limit.'
+        : 'I checked the exact part pinout and confirmed no signal exceeds the connected input pin limit; unknown limits remain unresolved.']
+    ];
+    const preflightList = document.getElementById('build-preflight-list');
+    preflightList.innerHTML = preflight.map(([id, text]) => `
+      <label class="build-check-row">
+        <input type="checkbox" data-build-check="${id}" ${state.buildProgress.preflight?.[id] ? 'checked' : ''}>
+        <span>${escapeHtml(text)}</span>
+      </label>`).join('');
+
+    state.buildRailRange = Number.isFinite(logicVoltage) && logicVoltage > 0
+      ? { min: Number((logicVoltage * 0.9).toFixed(2)), max: Number((logicVoltage * 1.1).toFixed(2)), nominal: logicVoltage }
+      : null;
+    const rangeText = document.getElementById('build-rail-range');
+    if (rangeText) {
+      rangeText.textContent = state.buildRailRange
+        ? `Target logic rail: ${state.buildRailRange.nominal} V. Check the controller's 3V3/5V rail with a multimeter; the displayed ${state.buildRailRange.min}–${state.buildRailRange.max} V window is a ±10% coaching threshold, not a manufacturer specification. Also verify the board input range in its datasheet.`
+        : 'No controller logic-rail target is available. Check the exact board datasheet; the first-power checkpoint remains blocked until a target is known.';
+    }
+    const railInput = document.getElementById('build-rail-reading');
+    if (railInput) railInput.value = state.buildProgress.measuredRail || '';
+
+    const connections = (state.wiringData?.connections || []).map((connection, index) => ({ connection, index }));
+    const isHighPower = ({ connection }) => {
+      const type = String(connection.type || '').toUpperCase();
+      const text = `${connection.from_part || ''} ${connection.from_pin || ''} ${connection.to_part || ''} ${connection.to_pin || ''}`;
+      return ['POWER', 'MOTOR'].includes(type) || /battery|motor|servo|solenoid|load/i.test(text);
+    };
+    const renderWireRows = rows => rows.map(({ connection, index }) => {
+      const from = `${connection.from_part || 'Part'} · ${connection.from_pin || 'pin'}`;
+      const to = `${connection.to_part || 'Controller'} · ${connection.to_pin || 'pin'}`;
+      return `<li><label class="build-wire-row"><input type="checkbox" data-build-wire="${index}" ${state.buildProgress.wires?.[index] ? 'checked' : ''}><span><b>${escapeHtml(from)} → ${escapeHtml(to)}</b><small>${escapeHtml(connection.type || 'Connection')}${connection.note ? ` · ${escapeHtml(connection.note)}` : ''}</small></span></label></li>`;
+    }).join('');
+    const firstStage = connections.filter(row => !isHighPower(row));
+    const secondStage = connections.filter(isHighPower);
+    document.getElementById('build-wiring-stage-one').innerHTML = renderWireRows(firstStage) || '<li class="caption">No generated low-voltage connections are available. Do not treat this build as wiring-verified.</li>';
+    document.getElementById('build-wiring-stage-two').innerHTML = renderWireRows(secondStage) || '<li class="caption">No motor or high-current connections were generated for this BOM.</li>';
+    document.getElementById('build-stage-two').hidden = !state.buildProgress.firstPowerCleared;
+
+    updateBuildGate(firstStage.length > 0);
+    updateWorkflowNavigation();
+  }
+
+  function updateBuildGate(hasLowVoltageWiring) {
+    const button = document.getElementById('btn-build-first-power');
+    const status = document.getElementById('build-gate-status');
+    if (!button || !status) return;
+    const checks = [...document.querySelectorAll('#build-preflight-list [data-build-check]')];
+    const firstWires = [...document.querySelectorAll('#build-wiring-stage-one [data-build-wire]')];
+    const railValue = Number(document.getElementById('build-rail-reading')?.value);
+    const range = state.buildRailRange;
+    const railValid = range && Number.isFinite(railValue) && railValue >= range.min && railValue <= range.max;
+    const wiringReady = Boolean(state.wiringData && firstWires.length > 0 && firstWires.every(input => input.checked));
+    const ready = checks.length > 0 && checks.every(input => input.checked) && railValid && wiringReady;
+
+    if (state.buildProgress.firstPowerCleared) {
+      button.disabled = true;
+      button.textContent = 'First-power checkpoint recorded';
+      status.textContent = 'Checkpoint recorded. Disconnect power before Stage B; connect motor/high-current wiring only after the controller and sensors have been checked. This record is self-reported, not a safety certification.';
+      const stageTwoRows = [...document.querySelectorAll('#build-wiring-stage-two [data-build-wire]')];
+      const complete = stageTwoRows.length === 0 || stageTwoRows.every(input => input.checked);
+      document.getElementById('build-stage-two-status').textContent = complete
+        ? 'Stage B wiring checklist complete. Keep power disconnected until driver, load, and supply ratings are verified.'
+        : `Stage B progress: ${stageTwoRows.filter(input => input.checked).length} of ${stageTwoRows.length} connections checked.`;
+      return;
+    }
+
+    button.disabled = !ready;
+    button.textContent = 'Complete first-power checks';
+    if (!state.wiringData) status.textContent = 'Blocked: generated wiring is unavailable for this BOM.';
+    else if (!range) status.textContent = 'Blocked: no controller logic-rail target is available; verify the exact board datasheet before first power.';
+    else if (!railValid) status.textContent = `Blocked: measure the controller logic rail and enter a value from ${range.min} to ${range.max} V.`;
+    else if (!checks.every(input => input.checked)) status.textContent = `Blocked: complete all ${checks.length} power-off and datasheet checks.`;
+    else if (!wiringReady) status.textContent = 'Blocked: complete Stage A wiring one checked connection at a time.';
+    else status.textContent = 'Checks recorded. This opens only the controller-and-logic first-power step; keep motor and high-current supplies disconnected.';
+  }
+
+  document.getElementById('view-build')?.addEventListener('change', event => {
+    const target = event.target;
+    if (target.matches('[data-build-check]')) {
+      state.buildProgress.preflight[target.dataset.buildCheck] = target.checked;
+      state.buildProgress.firstPowerCleared = false;
+    } else if (target.matches('[data-build-wire]')) {
+      state.buildProgress.wires[target.dataset.buildWire] = target.checked;
+      if (target.closest('#build-wiring-stage-one')) state.buildProgress.firstPowerCleared = false;
+    } else if (target.id === 'build-rail-reading') {
+      state.buildProgress.measuredRail = target.value;
+      state.buildProgress.firstPowerCleared = false;
+    }
+    saveBuildProgress();
+    updateBuildGate();
+  });
+
+  document.getElementById('btn-build-first-power')?.addEventListener('click', () => {
+    if (document.getElementById('btn-build-first-power').disabled) return;
+    state.buildProgress.firstPowerCleared = true;
+    saveBuildProgress();
+    renderBuildGuide();
+  });
 
   async function openGuidedBom(params) {
     const bom = await api.generateBom(params);
@@ -1295,7 +1499,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderBomView(bom) {
     if (!bom) return;
     state.activeBom = bom;
+    state.wiringData = null;
     state.optimizerEvaluation = null;
+    updateWorkflowNavigation();
 
     const heading = document.getElementById('bom-project-heading');
     if (heading) heading.textContent = `${bom.label || 'Project'} — Architecture & Planning`;
@@ -1346,6 +1552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (state.optimizerOpen) loadOptimizerCandidates();
     renderChecks(bom.checks || []);
     renderBillTable(bom.bill);
+    renderBuildGuide();
     loadWiringStudio();
     loadDeliveryOptimizer();
     loadResearchGuides();
@@ -1703,6 +1910,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('wiring-svg-container').innerHTML = w.svg_canvas || '';
       document.getElementById('wokwi-json-preview').value = w.wokwi_json_str || '{}';
       document.getElementById('firmware-code-preview').textContent = w.arduino_code || '';
+      state.componentTests = w.component_tests || [];
+      renderComponentTestBench();
       document.getElementById('mermaid-source-preview').textContent = w.mermaid_code || '';
       await renderMermaidDiagram(w.mermaid_code || '');
 
@@ -1713,10 +1922,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         tr.innerHTML = `<td>${c.from_part || ''} ${c.from_pin}</td><td>➔</td><td>${c.to_pin}</td><td>${c.color || 'Signal'}</td>`;
         pbody.appendChild(tr);
       });
+      renderBuildGuide();
     } catch (err) {
       console.warn('Could not load wiring studio:', err);
+      state.wiringData = null;
+      renderBuildGuide();
     }
   }
+
+  function renderComponentTestBench() {
+    const selector = document.getElementById('component-test-select');
+    const wiringList = document.getElementById('component-test-wiring');
+    const code = document.getElementById('component-test-code');
+    if (!selector || !wiringList || !code) return;
+
+    const guides = state.componentTests || [];
+    const previous = selector.value;
+    selector.replaceChildren();
+    guides.forEach((guide, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = `${guide.name}${guide.supported ? '' : ' · no test sketch yet'}`;
+      selector.appendChild(option);
+    });
+    if (!guides.length) {
+      selector.innerHTML = '<option value="">No testable BOM components</option>';
+      document.getElementById('component-test-status').textContent = 'Generate a BOM with supported component wiring to create an isolated test guide.';
+      wiringList.replaceChildren();
+      code.textContent = '';
+      document.getElementById('component-test-expected').textContent = '';
+      document.getElementById('component-test-steps').textContent = '';
+      return;
+    }
+
+    selector.value = Number.isInteger(Number(previous)) && guides[Number(previous)] ? previous : '0';
+    const guide = guides[Number(selector.value)];
+    const status = document.getElementById('component-test-status');
+    status.textContent = guide.supported
+      ? `${guide.role} · ${guide.library ? 'Additional library required' : 'Built-in Arduino APIs only'}`
+      : 'This component is shown in the BOM, but its pins are not modeled well enough for FORGE to generate a standalone test.';
+
+    wiringList.replaceChildren();
+    guide.wiring.forEach(step => {
+      const item = document.createElement('li');
+      item.textContent = step;
+      wiringList.appendChild(item);
+    });
+    if (!guide.wiring.length) {
+      const item = document.createElement('li');
+      item.textContent = 'No generated pin mapping is available for this part.';
+      wiringList.appendChild(item);
+    }
+    code.textContent = guide.code || '// No component-specific sketch available.';
+    document.getElementById('component-test-expected').textContent = guide.expected;
+    document.getElementById('component-test-steps').textContent = `${guide.steps}${guide.library ? ` ${guide.library}` : ''}`;
+    const safety = document.getElementById('component-test-safety');
+    safety.textContent = guide.safety || '';
+    safety.hidden = !guide.safety;
+    document.getElementById('btn-copy-component-test').disabled = !guide.supported;
+  }
+
+  document.getElementById('component-test-select')?.addEventListener('change', renderComponentTestBench);
+  document.getElementById('btn-copy-component-test')?.addEventListener('click', async () => {
+    const source = document.getElementById('component-test-code').textContent;
+    const status = document.getElementById('component-test-status');
+    try {
+      await navigator.clipboard.writeText(source);
+      status.textContent = 'Test sketch copied. Paste it into a new Arduino IDE sketch.';
+    } catch (err) {
+      status.textContent = 'Could not access clipboard. Select the sketch text and copy it manually.';
+    }
+  });
 
   // Wiring Tabs
   document.querySelectorAll('.tab-btn').forEach(btn => {

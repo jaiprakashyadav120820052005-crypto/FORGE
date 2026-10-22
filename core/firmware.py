@@ -38,6 +38,286 @@ def _extract_modules(parts: Dict[str, Any]) -> Dict[str, Any]:
 
     return mods
 
+
+def component_test_guides(parts: Dict[str, Any], connections: List[Dict[str, Any]], ctrl: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Build isolated Arduino tests from the wiring map; unsupported parts are explicitly not guessed."""
+    guides = []
+    for role, part in parts.items():
+        if not isinstance(part, dict) or part.get("none") or role == "controller" or part.get("role") == "controller":
+            continue
+
+        name = str(part.get("name") or role)
+        identity = f"{part.get('id', '')} {name}".lower()
+        part_connections = [
+            connection for connection in connections
+            if name.lower() in str(connection.get("from_part", "")).lower()
+        ]
+        if not part_connections:
+            part_connections = [
+                connection for connection in connections
+                if role.lower() in str(connection.get("from_part", "")).lower()
+            ]
+        if not part_connections and role == "sensor" and ("line" in identity or "ir" in identity):
+          part_connections = [connection for connection in connections if "IR Line Sensor Array" in str(connection.get("from_part", ""))]
+        if role == "motor":
+          part_connections = [connection for connection in connections if connection.get("type") == "MOTOR"]
+
+        pins = {str(connection.get("from_pin", "")).lower(): str(connection.get("to_pin", "")).replace("D", "")
+                for connection in part_connections}
+        wiring_steps = [
+            f"{connection.get('from_pin', 'Pin')} -> {connection.get('to_part', ctrl['name'])} {connection.get('to_pin', '')}"
+            + (f" ({connection['note']})" if connection.get("note") else "")
+            for connection in part_connections
+        ]
+        sketch = None
+        expected = ""
+        upload_steps = "Select the matching board in Arduino IDE, install any listed library, upload, then open Serial Monitor at 115200 baud."
+        safety = "Disconnect power before changing wires. Check the exact module pin labels and ratings."
+        requires_library = ""
+
+        if "ultrasonic" in identity or "hcsr04" in identity or "hc-sr04" in identity:
+            trig = next((v for k, v in pins.items() if "trig" in k), None)
+            echo = next((v for k, v in pins.items() if "echo" in k), None)
+            if trig and echo:
+                sketch = f'''#define TRIG_PIN {trig}
+#define ECHO_PIN {echo}
+
+void setup() {{
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  Serial.println("Ultrasonic test ready");
+}}
+
+void loop() {{
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  if (duration == 0) Serial.println("No echo: check target, wiring, and sensor power");
+  else {{
+    float distanceCm = duration * 0.0343f / 2.0f;
+    Serial.print("Distance: "); Serial.print(distanceCm, 1); Serial.println(" cm");
+  }}
+  delay(500);
+}}
+'''
+                expected = "Serial Monitor prints 'Distance: <value> cm' and the value changes when a flat target moves in front of the sensor. A timeout message means no echo was received; it is not a valid distance."
+                if float(ctrl.get("logic_v", 5)) <= 3.3:
+                    safety += " HC-SR04 ECHO is typically 5 V: do not connect it directly to a 3.3 V GPIO. Use a correctly rated divider/level shifter and verify the exact module's output level."
+
+        elif "dht" in identity or "temp" in identity:
+            data_pin = next((v for k, v in pins.items() if "data" in k), None)
+            if data_pin:
+                sensor_type = "DHT22" if "dht22" in identity else "DHT11"
+                sketch = f'''#include <DHT.h>
+#define DATA_PIN {data_pin}
+#define SENSOR_TYPE {sensor_type}
+DHT sensor(DATA_PIN, SENSOR_TYPE);
+
+void setup() {{
+  Serial.begin(115200);
+  sensor.begin();
+  Serial.println("DHT test ready");
+}}
+
+void loop() {{
+  float humidity = sensor.readHumidity();
+  float temperature = sensor.readTemperature();
+  if (isnan(humidity) || isnan(temperature)) Serial.println("Read failed: check DATA pin and pull-up");
+  else {{
+    Serial.print("Temperature: "); Serial.print(temperature, 1); Serial.print(" C, humidity: ");
+    Serial.print(humidity, 1); Serial.println(" %");
+  }}
+  delay(2000);
+}}
+'''
+                requires_library = "Install the DHT sensor library (Adafruit) using Arduino IDE Library Manager."
+                expected = "Every ~2 seconds, Serial Monitor prints temperature and relative humidity. A read-failed message indicates the sensor was not read."
+
+        elif "line" in identity or (role == "sensor" and "ir" in identity):
+            output_pins = [
+                connection.get("to_pin") for connection in part_connections
+                if str(connection.get("from_pin", "")).lower().startswith("out")
+            ]
+            if output_pins:
+                pin_list = ", ".join(str(pin).replace("D", "") for pin in output_pins)
+                count = len(output_pins)
+                serial_reads = "\n".join(
+                    f'  Serial.print("S{index + 1}: "); Serial.print(analogRead(sensorPins[{index}])); Serial.print("  ");'
+                    for index in range(count)
+                )
+                sketch = f'''const int sensorPins[] = {{{pin_list}}};
+const int sensorCount = {count};
+
+void setup() {{
+  Serial.begin(115200);
+  Serial.println("IR line sensor test ready");
+}}
+
+void loop() {{
+{serial_reads}
+  Serial.println();
+  delay(250);
+}}
+'''
+                expected = f"Serial Monitor prints {count} changing analog readings (S1...S{count}) as you move the array over light and dark surfaces. Calibrate the actual values before using them in control code."
+                if float(ctrl.get("logic_v", 5)) <= 3.3:
+                    safety += " Verify the sensor board's analog output never exceeds the controller's ADC input limit; add appropriate signal conditioning if it can output 5 V."
+
+        elif role == "display" or "oled" in identity or "ssd1306" in identity:
+            sda = next((v for k, v in pins.items() if k == "sda"), None)
+            scl = next((v for k, v in pins.items() if k == "scl"), None)
+            if sda and scl:
+                i2c_begin = f"Wire.begin({sda}, {scl});" if ctrl.get("id") == "esp32" else "Wire.begin();"
+                sketch = f'''#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#define SDA_PIN {sda}
+#define SCL_PIN {scl}
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+
+void setup() {{
+  Serial.begin(115200);
+  {i2c_begin}
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C) && !display.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {{
+    Serial.println("Display init failed: check power, SDA/SCL, and I2C address");
+    while (true) delay(100);
+  }}
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("FORGE display test");
+  display.println("If visible: PASS");
+  display.display();
+  Serial.println("Display initialized at 0x3C or 0x3D");
+}}
+
+void loop() {{ delay(1000); }}
+'''
+                requires_library = "Install Adafruit SSD1306 and Adafruit GFX Library using Arduino IDE Library Manager."
+                expected = "The OLED shows 'FORGE display test' and 'If visible: PASS'; Serial Monitor reports which initialization path succeeded."
+
+        elif "servo" in identity:
+            signal = next((v for k, v in pins.items() if "pwm signal" in k or "signal" in k), None)
+            if signal:
+                servo_include = "ESP32Servo.h" if ctrl.get("id") == "esp32" else "Servo.h"
+                servo_class = "Servo"
+                sketch = f'''#include <{servo_include}>
+#define SERVO_PIN {signal}
+{servo_class} testServo;
+
+void setup() {{
+  Serial.begin(115200);
+  testServo.attach(SERVO_PIN);
+  Serial.println("Servo test: sweep 90 -> 120 -> 90 degrees");
+}}
+
+void loop() {{
+  testServo.write(90); delay(800);
+  testServo.write(120); delay(800);
+}}
+'''
+                expected = "The servo moves gently between two positions. If it twitches or the controller resets, disconnect power and check the servo supply; do not power a loaded servo from a GPIO."
+                safety += " Keep the servo horn/load clear. Use a separate correctly rated servo supply if required, with common ground; never power the servo from a GPIO."
+                if ctrl.get("id") == "esp32":
+                    requires_library = "Install ESP32Servo using Arduino IDE Library Manager."
+
+        elif role == "motor":
+            driver = next((entry for entry_role, entry in parts.items() if entry_role == "driver" or (isinstance(entry, dict) and entry.get("role") == "driver")), None)
+            driver_id = str((driver or {}).get("id", "")).lower()
+            is_tb6612 = "tb6612" in driver_id or "tb6612" in str((driver or {}).get("name", "")).lower()
+            controller_map = {}
+            for connection in connections:
+                label = str(connection.get("from_pin", "")).lower()
+                if label in ("pwma (left speed)", "ena (jumper removed)", "ain1", "in1", "ain2", "in2"):
+                    controller_map[label] = str(connection.get("to_pin", "")).replace("D", "")
+            if driver and controller_map:
+                pwm_pin = controller_map.get("pwma (left speed)" if is_tb6612 else "ena (jumper removed)")
+                in_a = controller_map.get("ain1" if is_tb6612 else "in1")
+                in_b = controller_map.get("ain2" if is_tb6612 else "in2")
+                motor_out = next((connection for connection in connections if connection.get("type") == "MOTOR" and "left motor" in str(connection.get("to_part", "")).lower()), None)
+                if pwm_pin and in_a and in_b and motor_out:
+                    sketch = f'''// Low-speed single-motor check. Lift the wheel and use current-limited motor power.
+const int MOTOR_PWM = {pwm_pin};
+const int MOTOR_IN_A = {in_a};
+const int MOTOR_IN_B = {in_b};
+
+void setup() {{
+  Serial.begin(115200);
+  pinMode(MOTOR_PWM, OUTPUT);
+  pinMode(MOTOR_IN_A, OUTPUT);
+  pinMode(MOTOR_IN_B, OUTPUT);
+  digitalWrite(MOTOR_IN_A, LOW);
+  digitalWrite(MOTOR_IN_B, LOW);
+  analogWrite(MOTOR_PWM, 0);
+  Serial.println("Single motor test ready");
+}}
+
+void loop() {{
+  Serial.println("Motor forward at low PWM for 1 second");
+  digitalWrite(MOTOR_IN_A, HIGH);
+  digitalWrite(MOTOR_IN_B, LOW);
+  analogWrite(MOTOR_PWM, 64);
+  delay(1000);
+  analogWrite(MOTOR_PWM, 0);
+  digitalWrite(MOTOR_IN_A, LOW);
+  digitalWrite(MOTOR_IN_B, LOW);
+  delay(2000);
+}}
+'''
+                    wiring_steps = [
+                        f"{motor_out.get('from_part')} {motor_out.get('from_pin')} -> {motor_out.get('to_part')} {motor_out.get('to_pin')}",
+                        f"{controller_map.get('pwma (left speed)' if is_tb6612 else 'ena (jumper removed)')} -> driver left-channel PWM/enable",
+                        f"{in_a} and {in_b} -> driver left-channel direction inputs",
+                        "Driver motor supply and common ground -> use the rated supply and current limit from the motor/driver documentation",
+                    ]
+                    expected = "The selected motor turns slowly for 1 second, stops for 2 seconds, and repeats. If it does not, disconnect power and check the selected motor leads and driver channel."
+                    safety += " Raise the driven wheel, secure the chassis, and use current-limited motor power. This test assumes the selected motor is connected to the driver's left output channel; never connect a motor directly to an MCU pin."
+
+        elif "tb6612" in identity or "l298" in identity or role == "driver":
+            driver_connections = part_connections
+            if driver_connections:
+                wiring_steps = [
+                    f"{connection.get('from_pin', 'Pin')} -> {connection.get('to_part', ctrl['name'])} {connection.get('to_pin', '')}"
+                    + (f" ({connection['note']})" if connection.get("note") else "")
+                    for connection in driver_connections
+                ]
+                sketch = f'''// Driver logic pin test only. Keep motor supply disconnected and motor outputs unloaded.
+const int logicPins[] = {{{', '.join(dict.fromkeys(value for key, value in pins.items() if any(token in key for token in ('pwma', 'pwmb', 'ain', 'bin', 'ena', 'enb', 'in1', 'in2', 'in3', 'in4'))))}}};
+const int logicPinCount = sizeof(logicPins) / sizeof(logicPins[0]);
+
+void setup() {{
+  Serial.begin(115200);
+  for (int i = 0; i < logicPinCount; i++) {{
+    pinMode(logicPins[i], OUTPUT);
+    digitalWrite(logicPins[i], LOW);
+  }}
+  Serial.println("Driver logic outputs initialized LOW; no motor movement commanded.");
+}}
+
+void loop() {{ delay(1000); }}
+'''
+                expected = "Serial Monitor confirms logic pins are initialized LOW. This checks code/pin setup only; it does not prove the driver, power stage, or motors work."
+                safety += " This isolated sketch intentionally does not energize motor outputs. Test the motor power stage separately with wheels raised and current-limited power."
+
+        guides.append({
+            "id": str(part.get("id") or role),
+            "role": str(part.get("role") or role),
+            "name": name,
+            "supported": sketch is not None,
+            "wiring": wiring_steps,
+            "code": sketch or "",
+            "expected": expected or "No isolated test sketch is available for this component yet. Use its datasheet and the generated pinout; do not reuse another part's sketch.",
+            "steps": "Disconnect power before wiring. Compare every printed module label with the steps above. Connect only this component and its required controller. " + upload_steps,
+            "library": requires_library,
+            "safety": safety,
+        })
+    return guides
+
 def generate_arduino_firmware(parts: Dict[str, Any], connections: List[Dict[str, Any]], ctrl: Dict[str, Any], project_label: str) -> Dict[str, Any]:
     """Generate compilable Arduino C++ (.ino) code matching the hardware pins."""
     mods = _extract_modules(parts)
