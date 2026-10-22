@@ -78,6 +78,10 @@ def test_gpio_unknown_is_never_pass():
 def test_unsupported_replacement_category_rejected():
     with pytest.raises(ValueError): opt.replace(base(), "controller", P["bat_2s"])
     with pytest.raises(ValueError): opt.replace(base(), "chassis", P["ctrl_nano"])
+def test_custom_role_key_resolves_power_alias_before_replacement():
+    parts = {"power_custom": {"id": "custom_battery", "name": "Custom battery", "role": "power"}}
+    replacement = dict(P["bat_2s"])
+    assert opt.replace(parts, "power_custom", replacement)["power_custom"]["id"] == "bat_2s"
 def test_candidates_are_same_category():
     assert {c["role"] for c in opt.candidates(base(), "controller")} == {"controller"}
     assert all(c["kind"] == "line" for c in opt.candidates(base(), "sensor", "line"))

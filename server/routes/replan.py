@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Cookie, HTTPException
 
-from core import replan
+from core import bill, replan
 from core.data import PROJECTS
 from server.routes.bom import _build_response_payload
 from server.schemas import ReplanRequest
@@ -37,9 +37,19 @@ def preview(req: ReplanRequest, forge_session: Optional[str] = Cookie(None)):
     urls = {k: list(v) for k, v in session.sold_out_urls.items()}
     for k, v in req.sold_out_urls.items():
         urls[k] = sorted(set(urls.get(k, [])) | set(v))
-    proposal = replan.plan(parts, session.live, budget_old=session.budget, budget_new=req.new_budget, cut_pct=req.cut_pct,
+    # Rebase a percentage cut on today's displayed BOM estimate, which includes
+    # TinyFish prices fetched after the original BOM was generated.
+    bom_total = session.initial_bom_total
+    if req.cut_pct is not None:
+        current_total = bill.make(parts, session.live, session.choice, session.budget,
+                                  session.get_build_label(), manual=session.manual)["tot"]["subtotal"]
+        if current_total > 0:
+            bom_total = current_total
+            session.initial_bom_total = current_total
+    reduction_base = bom_total if req.cut_pct is not None and bom_total is not None else session.budget
+    proposal = replan.plan(parts, session.live, budget_old=reduction_base, budget_new=req.new_budget, cut_pct=req.cut_pct,
                            sold_out=sold, sold_out_urls=urls, needs_bt=_needs_bt(session),
-                           original_bom_total=session.initial_bom_total)
+                           original_bom_total=bom_total)
     session.pending_replan = proposal           # kept server-side; the client only gets the public view
     return replan.public(proposal)
 

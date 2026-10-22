@@ -139,7 +139,7 @@ def test_api_preview_accept_undo(client):
     assert prev.status_code == 200, prev.text
     assert client.get("/api/bom").json()["bill"]["grand_total"] == before["bill"]["grand_total"]   # preview changed nothing
     acc = client.post("/api/replan/accept").json()
-    assert acc["status"] == "ok" and acc["bom"]["budget"] == 2625
+    assert acc["status"] == "ok" and acc["bom"]["budget"] == round(before["bill"]["grand_total"] * 0.75)
     assert "mot_n20" not in {p["id"] for p in acc["bom"]["parts"].values() if isinstance(p, dict)}
     assert client.get("/api/replan/log").json()[0]["changes"]
     und = client.post("/api/replan/undo").json()

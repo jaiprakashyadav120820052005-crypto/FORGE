@@ -40,7 +40,8 @@ def replace(parts, role, new_part):
         raise ValueError(f"Unknown or unsupported role: {role}")
     p_role = new_part.get("role")
     current = parts.get(role, {})
-    eff_role = profiles.ROLE_ALIASES.get(role, current.get("role", role))
+    current_role = current.get("role", role)
+    eff_role = profiles.ROLE_ALIASES.get(role, profiles.ROLE_ALIASES.get(current_role, current_role))
     eff_p_role = profiles.ROLE_ALIASES.get(p_role, p_role) if p_role else None
     if p_role != role and eff_p_role != eff_role and not new_part.get("none"):
         raise ValueError(f"Cannot replace {role} with part of role {p_role}")
