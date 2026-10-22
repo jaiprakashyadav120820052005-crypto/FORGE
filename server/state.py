@@ -36,6 +36,10 @@ class SessionData:
         self.agent: Dict[str, Any] = {}
         self.opt_open: bool = False
         self.opt_swaps: Dict[str, Any] = {}
+        self.sold_out: set = set()                       # part ids the user reported sold out (Pivot A)
+        self.sold_out_urls: Dict[str, list] = {}         # {part_id: [listing urls]} sold out at one shop only
+        self.pending_replan: Optional[Dict[str, Any]] = None   # proposal waiting for accept / discard (never applied silently)
+        self.replan_log: list = []                       # accepted re-plans, each with a snapshot so it can be undone
 
     def touch(self):
         self.last_active = time.time()

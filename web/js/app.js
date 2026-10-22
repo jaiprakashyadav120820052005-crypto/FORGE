@@ -10,6 +10,7 @@ function escapeHtml(value) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  window.forgeRenderBom = (bom) => renderBomView(bom);
   const state = {
     stage: 'home',
     questions: [],
@@ -398,9 +399,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         detailList.append(term, definition);
       });
       details.append(summary, detailList);
+      const actionRow = document.createElement('div');
+      actionRow.className = 'star-project-actions';
+      actionRow.style.display = 'flex';
+      actionRow.style.gap = '8px';
+      actionRow.style.marginTop = '12px';
+
       const selectButton = document.createElement('button');
       selectButton.className = 'btn star-project-select';
       selectButton.type = 'button';
+      selectButton.style.flex = '1';
       selectButton.textContent = state.selectedStarProject?.key === project.key
         ? 'Selected'
         : 'Select project';
@@ -409,8 +417,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         state.selectedStarProject = project;
         renderStarProjects();
       });
+
+      const directBuildButton = document.createElement('button');
+      directBuildButton.className = 'btn primary star-project-direct-build';
+      directBuildButton.type = 'button';
+      directBuildButton.style.flex = '1';
+      directBuildButton.textContent = project.bom_supported ? '⚡ Build BOM' : '⚡ Plan BOM';
+      directBuildButton.title = project.bom_supported ? 'Open pre-verified catalog BOM' : 'Synthesize architecture BOM with AI copilot';
+      directBuildButton.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        state.selectedStarProject = project;
+        renderStarProjects();
+        directBuildButton.disabled = true;
+        directBuildButton.textContent = 'Generating…';
+        try {
+          await openGuidedBom({
+            project: project.key,
+            budget: project.cost_inr ?? 3500,
+            custom_idea: project.bom_supported ? undefined : `${project.name}: ${project.description}`
+          });
+        } catch (err) {
+          directBuildButton.disabled = false;
+          directBuildButton.textContent = project.bom_supported ? '⚡ Build BOM' : '⚡ Plan BOM';
+          alert('Could not open build: ' + err.message);
+        }
+      });
+
+      actionRow.append(selectButton, directBuildButton);
       card.classList.toggle('star-project-card-selected', state.selectedStarProject?.key === project.key);
-      card.append(heading, domain, description, metrics, details, selectButton);
+      card.append(heading, domain, description, metrics, details, actionRow);
       grid.appendChild(card);
     });
     renderSelectedStarProject();
@@ -434,26 +469,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const action = document.createElement('button');
     action.className = 'btn primary';
     action.type = 'button';
-    if (project.bom_supported) {
-      action.textContent = 'Build this project';
-      action.addEventListener('click', async () => {
-        action.disabled = true;
-        try {
-          await openGuidedBom({
-            project: project.key,
-            budget: project.cost_inr ?? 3500
-          });
-        } catch (err) {
-          action.disabled = false;
-          document.getElementById('star-project-selection-status').textContent =
-            `Could not open this build: ${err.message}`;
-        }
-      });
-    } else {
-      action.textContent = 'BOM not available yet';
+    action.textContent = project.bom_supported ? '⚡ Build Catalog BOM' : '⚡ Plan & Build BOM (AI Copilot)';
+    action.title = project.bom_supported
+      ? 'Open pre-verified catalog Bill of Materials'
+      : 'Synthesize verified hardware architecture using FORGE AI copilot';
+    action.addEventListener('click', async () => {
       action.disabled = true;
-      action.title = 'This curated project has no catalog bill of materials yet.';
-    }
+      action.textContent = 'Generating BOM…';
+      const statusEl = document.getElementById('star-project-selection-status');
+      if (statusEl) statusEl.textContent = 'Synthesizing verified component architecture and sourcing quotes…';
+      try {
+        await openGuidedBom({
+          project: project.key,
+          budget: project.cost_inr ?? 3500,
+          custom_idea: project.bom_supported ? undefined : `${project.name}: ${project.description}`
+        });
+      } catch (err) {
+        action.disabled = false;
+        action.textContent = project.bom_supported ? '⚡ Build Catalog BOM' : '⚡ Plan & Build BOM (AI Copilot)';
+        if (statusEl) {
+          statusEl.textContent = `Could not open this build: ${err.message}`;
+        }
+      }
+    });
 
     const status = document.createElement('p');
     status.id = 'star-project-selection-status';
@@ -461,8 +499,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
     status.textContent = project.bom_supported
-      ? 'This project has a catalog BOM ready to open.'
-      : 'Project selected. A catalog BOM is not available for this build yet.';
+      ? 'This project has a pre-verified catalog BOM ready to open.'
+      : 'Curated standout build ready: click above to generate its verified architecture and Bill of Materials.';
     container.replaceChildren(title, description, action, status);
   }
 

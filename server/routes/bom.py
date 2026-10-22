@@ -7,8 +7,9 @@ from fastapi.responses import Response, StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from typing import Optional
 
-from core import bill, component_catalog, compatibility_engine, custom_bom, hybrid_bom, ledger, optimizer, part_specs, pipeline, project_store
+from core import replan as replan_core, bill, component_catalog, compatibility_engine, custom_bom, hybrid_bom, ledger, optimizer, part_specs, pipeline, project_store
 from core.data import PROJECTS, QTY
+from core.recommendation_catalog import STAR_PROJECTS
 from server.schemas import BomChoiceRequest, BomGenerateRequest
 from server.state import store
 
@@ -103,6 +104,27 @@ def generate_bom(req: BomGenerateRequest, forge_session: Optional[str] = Cookie(
 
     plan = project_store.get_plan(key)
     if not plan:
+        raw_id = key.split(":", 1)[-1] if ":" in key else key
+        star = next((p for p in STAR_PROJECTS if p["key"] in (key, raw_id)), None)
+        if star:
+            star_idea = f"{star['name']}: {star['description']}"
+            res = hybrid_bom.resolve(star_idea, req.budget or star.get("cost_inr") or 3500, req.bluetooth, session.gemini_counter)
+            plan = res.get("plan")
+            if plan:
+                session.opt_swaps.clear()
+                session.res = None
+                session.custom = dict(
+                    idea=star_idea,
+                    label=plan["label"],
+                    parts=plan["parts"],
+                    notes=plan.get("notes", []),
+                    origin=plan["origin"],
+                    meta=plan,
+                )
+                session.bom_origin = plan["origin"]
+                session.project = key
+                session.stage = "bom"
+                return _build_response_payload(session)
         raise HTTPException(status_code=404, detail=f"Project '{key}' not found in catalog")
 
     session.opt_swaps.clear()
@@ -275,6 +297,9 @@ async def stream_sourcing(forge_session: Optional[str] = Cookie(None)):
             await task
         except Exception as e:
             log_callback(f"Task error: {e}")
+
+        # Fresh sourcing rebuilds offers with in_stock=None: restore what the user reported sold out (Pivot A)
+        session.live = replan_core.reapply_sold_out(session.live, session.sold_out, session.sold_out_urls)
 
         # Flush any remaining logs
         while not queue.empty():

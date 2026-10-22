@@ -56,6 +56,13 @@ class BomChoiceRequest(BaseModel):
     name: Optional[str] = None
 
 
+class ReplanRequest(BaseModel):
+    cut_pct: Optional[float] = Field(default=None, gt=0, lt=100, description="Budget drop in percent, e.g. 25")
+    new_budget: Optional[int] = Field(default=None, gt=0)
+    sold_out_part_ids: List[str] = Field(default_factory=list)
+    sold_out_urls: Dict[str, List[str]] = Field(default_factory=dict, description="{part_id: [listing urls]} for a sold-out listing of a part that may exist elsewhere")
+
+
 class DeliveryOptimizeRequest(BaseModel):
     shipping_fee: Optional[float] = None
     free_threshold: Optional[float] = None

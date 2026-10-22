@@ -119,7 +119,8 @@ def bad_price_quote(quote, price=None):
 def trusted_price(offer):
     """An offer's price may be used only if it exists and its own quote does not show an EMI/instalment-type figure.
     One rule for the BOM, the cards, the ledger and the cheapest-price logic."""
-    return bool(offer.get("price")) and not bad_price_quote(offer.get("quote"), offer.get("price"))
+    return bool(offer.get("price")) and offer.get("in_stock") is not False and not bad_price_quote(offer.get("quote"), offer.get("price"))
+
 
 
 def page_name(text, part_query):

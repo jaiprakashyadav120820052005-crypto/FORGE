@@ -294,6 +294,420 @@
       },
       "source": "gemini",
       "updated_at": "2026-10-17T17:57:26+00:00"
+    },
+    "high torque 8108 kv100 brushless gimbal motor": {
+      "name": "High-Torque 8108 KV100 Brushless Gimbal Motor",
+      "specs": {
+        "kv": 100
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:33:26+00:00"
+    },
+    "10 1 planetary gear reduction box": {
+      "name": "10:1 Planetary Gear Reduction Box",
+      "specs": {
+        "ratio": 10
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:33:26+00:00"
+    },
+    "can bus foc driver board simplefoc": {
+      "name": "CAN Bus FOC Driver Board SimpleFOC",
+      "specs": {
+        "voltage_v": 24,
+        "current_a": 15
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:33:26+00:00"
+    },
+    "as5047p 14 bit magnetic rotary encoder": {
+      "name": "AS5047P 14-Bit Magnetic Rotary Encoder",
+      "specs": {
+        "resolution_bits": 14
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:33:26+00:00"
+    },
+    "stm32f405 can master robot controller": {
+      "name": "STM32F405 CAN Master Robot Controller",
+      "specs": {
+        "clock_mhz": 168
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:33:26+00:00"
+    },
+    "24v 30a 750w dc switching power supply": {
+      "name": "24V 30A 750W DC Switching Power Supply",
+      "specs": {
+        "voltage_v": 24,
+        "current_a": 30
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:33:26+00:00"
+    },
+    "vesc 6 brushless motor controller 50a": {
+      "name": "VESC 6 Brushless Motor Controller 50A",
+      "specs": {
+        "peak_current_a": 50,
+        "voltage_v": 12
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "540 sensored bldc motor 3300kv": {
+      "name": "540 Sensored BLDC Motor 3300KV",
+      "specs": {
+        "kv": 3300
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "high torque metal gear steering servo 20kg": {
+      "name": "High Torque Metal Gear Steering Servo 20kg",
+      "specs": {
+        "torque_kg_cm": 20
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "nvidia jetson orin nano developer kit": {
+      "name": "NVIDIA Jetson Orin Nano Developer Kit",
+      "specs": {
+        "ram_gb": 8
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "rplidar a1m8 360 degree laser scanner": {
+      "name": "RPLIDAR A1M8 360 Degree Laser Scanner",
+      "specs": {
+        "range_m": 12
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "3s 11 1v 5000mah 50c lipo battery pack": {
+      "name": "3S 11.1V 5000mAh 50C LiPo Battery Pack",
+      "specs": {
+        "voltage_v": 11.1,
+        "capacity_mah": 5000
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "5v 5a high efficiency buck regulator sbec": {
+      "name": "5V 5A High Efficiency Buck Regulator (SBEC)",
+      "specs": {
+        "output_v": 5,
+        "current_a": 5
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "teensy 4 0 usb low latency microcontroller": {
+      "name": "Teensy 4.0 USB Low-Latency Microcontroller",
+      "specs": {
+        "clock_mhz": 600
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:01+00:00"
+    },
+    "sts3215 high torque serial bus servo 30kg": {
+      "name": "STS3215 High Torque Serial Bus Servo 30kg",
+      "specs": {
+        "torque_kg_cm": 30,
+        "voltage_v": 12
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "sts3215 l low friction leader serial servo": {
+      "name": "STS3215-L Low-Friction Leader Serial Servo",
+      "specs": {
+        "voltage_v": 12
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "12v 10a regulated dc power supply adapter": {
+      "name": "12V 10A Regulated DC Power Supply Adapter",
+      "specs": {
+        "voltage_v": 12,
+        "current_a": 10
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "dual shaft direct drive bldc hub motors 200w": {
+      "name": "Dual-Shaft Direct Drive BLDC Hub Motors 200W",
+      "specs": {
+        "voltage_v": 12,
+        "power_w": 200
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "dual channel foc motor driver board odrive": {
+      "name": "Dual-Channel FOC Motor Driver Board ODrive",
+      "specs": {
+        "voltage_v": 24,
+        "current_a": 40
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "teensy 4 1 600mhz arm cortex m7 board": {
+      "name": "Teensy 4.1 600MHz ARM Cortex-M7 Board",
+      "specs": {
+        "clock_mhz": 600
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "amt102 v capacitive modular incremental encoder": {
+      "name": "AMT102-V Capacitive Modular Incremental Encoder",
+      "specs": {
+        "cpr": 2048
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "3s 11 1v 2200mah 45c lipo battery pack": {
+      "name": "3S 11.1V 2200mAh 45C LiPo Battery Pack",
+      "specs": {
+        "voltage_v": 11.1,
+        "capacity_mah": 2200
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "xilinx artix 7 fpga development board arty a7 35t": {
+      "name": "Xilinx Artix-7 FPGA Development Board (Arty A7-35T)",
+      "specs": {
+        "logic_cells": 33280
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "5v 2 5a regulated micro usb power supply": {
+      "name": "5V 2.5A Regulated Micro-USB Power Supply",
+      "specs": {
+        "voltage_v": 5,
+        "current_a": 2.5
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "32mb high speed qspi flash memory module": {
+      "name": "32MB High-Speed QSPI Flash Memory Module",
+      "specs": {
+        "size_mb": 32
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "rds3115 high torque 15kg metal gear digital servos": {
+      "name": "RDS3115 High Torque 15kg Metal Gear Digital Servos",
+      "specs": {
+        "torque_kg_cm": 15,
+        "voltage_v": 6
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "custom 16 channel high current servo distribution pcb": {
+      "name": "Custom 16-Channel High-Current Servo Distribution PCB",
+      "specs": {
+        "channels": 16
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "6v 20a high power step down buck regulator ubec": {
+      "name": "6V 20A High-Power Step-Down Buck Regulator (UBEC)",
+      "specs": {
+        "voltage_v": 6,
+        "current_a": 20
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:10+00:00"
+    },
+    "3s 11 1v 3300mah 35c lipo battery pack": {
+      "name": "3S 11.1V 3300mAh 35C LiPo Battery Pack",
+      "specs": {
+        "voltage_v": 11.1,
+        "capacity_mah": 3300
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "stm32f429 onboard computer obc development board": {
+      "name": "STM32F429 Onboard Computer (OBC) Development Board",
+      "specs": {
+        "clock_mhz": 180
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "sx1262 lora 433mhz long range rf transceiver module": {
+      "name": "SX1262 LoRa 433MHz Long Range RF Transceiver Module",
+      "specs": {
+        "frequency_mhz": 433
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "tmc2300 low voltage silent bldc stepper driver": {
+      "name": "TMC2300 Low Voltage Silent BLDC/Stepper Driver",
+      "specs": {
+        "voltage_v": 5
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "cubesat electrical power system eps board with mppt": {
+      "name": "CubeSat Electrical Power System (EPS) Board with MPPT",
+      "specs": {
+        "output_v": 5
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "micro metal gearmotor with quadrature encoder": {
+      "name": "Micro Metal Gearmotor with Quadrature Encoder",
+      "specs": {
+        "voltage_v": 6,
+        "rpm": 150
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "7 4v 2s 1500mah lipo battery pack": {
+      "name": "7.4V 2S 1500mAh LiPo Battery Pack",
+      "specs": {
+        "voltage_v": 7.4,
+        "capacity_mah": 1500
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "brushless gimbal motor 4008 150kv with flywheel": {
+      "name": "Brushless Gimbal Motor 4008 150KV with Flywheel",
+      "specs": {
+        "kv": 150
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "simplefoc mini brushless motor driver board": {
+      "name": "SimpleFOC Mini Brushless Motor Driver Board",
+      "specs": {
+        "voltage_v": 12,
+        "current_a": 5
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "as5600 12 bit magnetic angle encoder": {
+      "name": "AS5600 12-Bit Magnetic Angle Encoder",
+      "specs": {
+        "resolution_bits": 12
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "stm32f405 168mhz arm cortex m4 board": {
+      "name": "STM32F405 168MHz ARM Cortex-M4 Board",
+      "specs": {
+        "clock_mhz": 168
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "3s 11 1v 1500mah 45c lipo battery": {
+      "name": "3S 11.1V 1500mAh 45C LiPo Battery",
+      "specs": {
+        "voltage_v": 11.1,
+        "capacity_mah": 1500
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "nema 17 stepper motor 1 8 degree 48mm 2 0a": {
+      "name": "NEMA 17 Stepper Motor 1.8 Degree 48mm 2.0A",
+      "specs": {
+        "current_a": 2
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "tmc2209 silentstepstick stepper motor driver": {
+      "name": "TMC2209 SilentStepStick Stepper Motor Driver",
+      "specs": {
+        "voltage_v": 24,
+        "current_a": 2.8
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "mini 12v dc vacuum suction pump with solenoid valve": {
+      "name": "Mini 12V DC Vacuum Suction Pump with Solenoid Valve",
+      "specs": {
+        "voltage_v": 12
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "32 bit skr mini e3 v3 arm cortex m0 controller": {
+      "name": "32-Bit SKR Mini E3 V3 ARM Cortex-M0+ Controller",
+      "specs": {
+        "clock_mhz": 64
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "24v 15a 360w dc switching power supply": {
+      "name": "24V 15A 360W DC Switching Power Supply",
+      "specs": {
+        "voltage_v": 24,
+        "current_a": 15
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "n20 micro metal gearmotor with encoder 6v 300rpm": {
+      "name": "N20 Micro Metal Gearmotor with Encoder 6V 300RPM",
+      "specs": {
+        "voltage_v": 6,
+        "rpm": 300
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "vl53l0x time of flight distance sensor": {
+      "name": "VL53L0X Time-of-Flight Distance Sensor",
+      "specs": {
+        "range_m": 2
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "3 7v 1s 1200mah lipo battery with jst connector": {
+      "name": "3.7V 1S 1200mAh LiPo Battery with JST Connector",
+      "specs": {
+        "voltage_v": 3.7,
+        "capacity_mah": 1200
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "5v boost 3 3v buck boost dc dc regulator board": {
+      "name": "5V Boost / 3.3V Buck-Boost DC-DC Regulator Board",
+      "specs": {
+        "output_v": 5
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-22T08:35:11+00:00"
     }
   }
 }

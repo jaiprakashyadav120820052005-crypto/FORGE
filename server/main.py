@@ -15,6 +15,7 @@ from server.routes import (
     idea,
     optimizer,
     projects,
+    replan,
     research,
     resume,
     stars,
@@ -75,6 +76,7 @@ app.include_router(competition.router)
 app.include_router(bom.router)
 app.include_router(delivery.router)
 app.include_router(optimizer.router)
+app.include_router(replan.router)
 app.include_router(wiring.router)
 app.include_router(research.router)
 app.include_router(stars.router)

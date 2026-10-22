@@ -54,6 +54,7 @@ def unverified_for(part_id, live):
     out = []
     for o in live.get(part_id, []):
         if not o.get("price"): out.append(o)
+        elif o.get("in_stock") is False: out.append(dict(o, price=None, note="Sold out at this shop, so it is not used for pricing"))
         elif not pagerules.trusted_price(o):
             out.append(dict(o, price=None, note=o.get("note") or f"Price not used: ₹{o['price']:,.0f} looks like an EMI or instalment figure, not the product price"))
     return out

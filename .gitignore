@@ -8,3 +8,4 @@ __pycache__/
 core/project_data/learned_projects.json
 core/project_data/recommender_feedback.jsonl
 data/swap_store.json
+.vscode/
