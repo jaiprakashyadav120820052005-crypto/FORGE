@@ -633,6 +633,43 @@
    "verification_status": "unverified",
    "last_verified": null,
    "notes": ""
+  },
+  {
+   "id": "pow_power_bank",
+   "legacy_id": "pow_power_bank",
+   "legacy_mapping": "approximate",
+   "name": "Existing USB power bank (5V default output)",
+   "category": "battery",
+   "manufacturer": null,
+   "manufacturer_part_number": null,
+   "model_variant": "Exact model not specified; use only its documented 5V default output mode",
+   "description": "Existing user-owned power bank. The default USB output is nominally 5V; this generic record does not establish the exact model's maximum voltage, current limit, capacity under load, or protection behavior.",
+   "specifications": {
+    "nominal_v": {
+     "value": 5,
+     "unit": "V"
+    },
+    "full_charge_v": {
+     "value": null,
+     "unit": "V"
+    },
+    "capacity_mah": {
+     "value": null,
+     "unit": "mAh"
+    },
+    "max_continuous_discharge_a": {
+     "value": null,
+     "unit": "A"
+    }
+   },
+   "compatibility": {
+    "output_mode": "5V USB default only; do not assume USB-PD 9V/12V modes are safe for the build"
+   },
+   "datasheet_url": null,
+   "specification_sources": [],
+   "verification_status": "unverified",
+   "last_verified": null,
+   "notes": "₹0 in FORGE means the club already owns this power bank; it is not a market price. 5V is the default output mode only. Current, capacity, maximum voltage, and auto-shutoff depend on the exact model; check its label and behavior before use."
   }
  ]
 }

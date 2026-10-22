@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     selectedStarProject: null,
     starsLoaded: false,
     activeBom: null,
+    userSelectedBom: false,
     completedProjects: [],
     recommendationResponse: null,
     optimizerOpen: false,
@@ -130,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function mountBuildResources() {
     const target = document.getElementById('build-resource-mount');
     if (!target) return;
-    ['specs-studio-card', 'wiring-studio-card'].forEach(id => {
+    ['wiring-studio-card', 'specs-studio-card'].forEach(id => {
       const resource = document.getElementById(id);
       if (resource) target.appendChild(resource);
     });
@@ -177,6 +178,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const logicVoltage = Number(controllerSpecs.logic_v);
     const sensors = parts.filter(([role, part]) => role === 'sensor' || part.role === 'sensor').map(([, part]) => part);
     const logicFailure = (bom.checks || []).some(check => check.id === 'logic_level' && check.status === 'FAIL');
+    const powerBank = parts.find(([, part]) => /power.?bank/i.test(`${part.id} ${part.name}`));
+    const usingPowerBank = Boolean(powerBank && /power.?bank/i.test(`${powerBank[1].id} ${powerBank[1].name}`));
     const signalRisk = (Number.isFinite(logicVoltage) && logicVoltage <= 3.3 && sensors.length > 0) || logicFailure;
     const hasHcSr04 = sensors.some(part => /hc.?sr04|ultrasonic/i.test(`${part.id} ${part.name}`));
     const signalWarning = document.getElementById('build-signal-warning');
@@ -185,6 +188,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       signalWarning.innerHTML = signalRisk
         ? `<b>Potential signal-voltage hazard.</b> ${escapeHtml(controller?.name || 'This controller')} uses ${Number.isFinite(logicVoltage) ? `${logicVoltage} V` : 'a low-voltage'} logic, but FORGE does not have verified per-pin output limits for the exact sensor variant. ${hasHcSr04 ? 'HC-SR04 ECHO is typically 5 V: do not connect it directly to an ESP32 GPIO; use a correctly rated divider or level shifter and verify the module datasheet.' : 'Check each sensor output-high voltage against the exact controller GPIO absolute maximum; add a divider or level shifter where required.'} The generated wiring is not proof that signal conditioning is present.`
         : '';
+    }
+    const powerWarning = document.getElementById('build-power-warning');
+    if (powerWarning) {
+      powerWarning.hidden = !usingPowerBank;
+      powerWarning.textContent = usingPowerBank
+        ? 'Power bank selected: the BOM treats this as an existing item at ₹0. The profile is generic and does not prove your bank’s exact output limits. Use its documented 5V default USB mode only, confirm the receiving board accepts 5V at the chosen port, verify current for the connected loads, and check that its low-load/peak-current behavior suits the build. Do not use a USB-PD 9V/12V mode.'
+        : '';
+    }
+    const safetyAction = document.getElementById('build-safety-action');
+    if (safetyAction) {
+      safetyAction.hidden = !logicFailure;
+      document.getElementById('build-safety-action-copy').textContent = logicFailure
+        ? 'A known sensor/controller voltage mismatch is still present. The first-power checkpoint is blocked until the BOM includes compatible signal conditioning or you choose compatible parts.'
+        : '';
+      document.getElementById('build-safety-action-status').textContent = '';
     }
 
     const preflight = [
@@ -197,7 +215,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       ['loads-off', 'Leave motor, servo, solenoid, and other high-current supplies disconnected during the first controller-and-sensor check.'],
       [signalRisk ? 'signal-protection' : 'signal-review', signalRisk
         ? 'I verified the exact sensor output level and installed a correctly rated divider or level shifter wherever a signal could exceed the controller GPIO limit.'
-        : 'I checked the exact part pinout and confirmed no signal exceeds the connected input pin limit; unknown limits remain unresolved.']
+        : 'I checked the exact part pinout and confirmed no signal exceeds the connected input pin limit; unknown limits remain unresolved.'],
+      ...(usingPowerBank ? [
+        ['powerbank-mode', 'Confirm the exact power bank is in its documented 5V USB output mode; never use a 9V/12V USB-PD mode for this 5V profile. Measure output voltage before connecting it.'],
+        ['powerbank-current', 'Read the bank current rating and confirm it supports the controller and sensors. For motor loads, verify driver and motor stall/startup current separately; do not connect motors if the bank rating or auto-shutoff behavior is unknown.'],
+        ['powerbank-input', 'Use the controller’s specified 5V input: USB on Nano/Uno, or the marked 5V/VIN input on the exact ESP32 board. Never feed 5V into Nano/Uno VIN.']
+      ] : [])
     ];
     const preflightList = document.getElementById('build-preflight-list');
     preflightList.innerHTML = preflight.map(([id, text]) => `
@@ -247,9 +270,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const firstWires = [...document.querySelectorAll('#build-wiring-stage-one [data-build-wire]')];
     const railValue = Number(document.getElementById('build-rail-reading')?.value);
     const range = state.buildRailRange;
+    const knownFailures = (state.activeBom?.checks || []).filter(check => check.status === 'FAIL');
     const railValid = range && Number.isFinite(railValue) && railValue >= range.min && railValue <= range.max;
     const wiringReady = Boolean(state.wiringData && firstWires.length > 0 && firstWires.every(input => input.checked));
-    const ready = checks.length > 0 && checks.every(input => input.checked) && railValid && wiringReady;
+    const ready = checks.length > 0 && checks.every(input => input.checked) && railValid && wiringReady && knownFailures.length === 0;
+
+    if (knownFailures.length && state.buildProgress.firstPowerCleared) {
+      state.buildProgress.firstPowerCleared = false;
+      saveBuildProgress();
+    }
 
     if (state.buildProgress.firstPowerCleared) {
       button.disabled = true;
@@ -265,7 +294,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     button.disabled = !ready;
     button.textContent = 'Complete first-power checks';
-    if (!state.wiringData) status.textContent = 'Blocked: generated wiring is unavailable for this BOM.';
+    if (knownFailures.length) status.textContent = `Blocked: fix known compatibility failure${knownFailures.length > 1 ? 's' : ''} first (${knownFailures.map(check => check.title).join('; ')}).`;
+    else if (!state.wiringData) status.textContent = 'Blocked: generated wiring is unavailable for this BOM.';
     else if (!range) status.textContent = 'Blocked: no controller logic-rail target is available; verify the exact board datasheet before first power.';
     else if (!railValid) status.textContent = `Blocked: measure the controller logic rail and enter a value from ${range.min} to ${range.max} V.`;
     else if (!checks.every(input => input.checked)) status.textContent = `Blocked: complete all ${checks.length} power-off and datasheet checks.`;
@@ -296,8 +326,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderBuildGuide();
   });
 
+  document.getElementById('btn-build-add-level-shifter')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    const status = document.getElementById('build-safety-action-status');
+    button.disabled = true;
+    status.textContent = 'Checking whether the recommended fix resolves the mismatch…';
+    try {
+      await api.applySafetyFix('add_level_shifter');
+      state.optimizerNotice = 'Added a logic level shifter. Review its actual wiring and ratings.';
+      renderBomView(await api.getBom());
+    } catch (err) {
+      status.textContent = `Could not add the fix: ${err.message}`;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   async function openGuidedBom(params) {
     const bom = await api.generateBom(params);
+    state.userSelectedBom = true;
     renderBomView(bom);
     switchStage('bom', { bomMode: 'guided' });
   }
@@ -517,6 +564,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  document.getElementById('btn-use-powerbank')?.addEventListener('click', async () => {
+    const button = document.getElementById('btn-use-powerbank');
+    button.disabled = true;
+    try {
+      const entry = Object.entries(state.activeBom?.parts || {}).find(([role, part]) =>
+        part && !part.none && (['battery', 'power'].includes(role) || ['battery', 'power'].includes(part.role))
+      );
+      if (!entry) return;
+      state.optimizerRole = entry[0];
+      state.optimizerOpen = true;
+      const content = document.getElementById('optimizer-content');
+      content.hidden = false;
+      const toggle = document.getElementById('btn-toggle-optimizer');
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.textContent = 'Close optimizer';
+      renderOptimizerRoles();
+      await loadOptimizerCandidates();
+      const select = document.getElementById('optimizer-part-select');
+      const bank = [...select.options].find(option => option.value === 'pow_power_bank');
+      if (!bank) {
+        document.getElementById('optimizer-message').textContent = 'This BOM has no battery role that can be replaced by the existing 5V power bank.';
+        return;
+      }
+      select.value = bank.value;
+      state.optimizerCandidate = bank.value;
+      await evaluateOptimizerSwap();
+      content.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      document.getElementById('optimizer-message').textContent = `Could not compare the power bank: ${err.message}`;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   document.getElementById('optimizer-role-select')?.addEventListener('change', async event => {
     state.optimizerRole = event.target.value;
     state.optimizerEvaluation = null;
@@ -661,6 +742,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     headerDiv.className = 'optimizer-eval-header';
     headerDiv.innerHTML = `<h4>${escapeHtml(currentName)} &rarr; ${escapeHtml(candName)}</h4>`;
     result.appendChild(headerDiv);
+    if (state.optimizerCandidate === 'pow_power_bank') {
+      const bankNote = document.createElement('p');
+      bankNote.className = 'optimizer-powerbank-note';
+      bankNote.textContent = '₹0 assumes the club already owns this bank. FORGE only knows its nominal 5V default USB mode; exact output limits, current, capacity, and auto-shutoff are unknown. Check the label, avoid USB-PD voltage modes, and use a separately rated motor supply unless the bank and motor ratings are verified.';
+      result.appendChild(bankNote);
+    }
 
     // 2. Status Badge & Counts Row
     const badgeRow = document.createElement('div');
@@ -1501,6 +1588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bt = document.getElementById('bom-bluetooth-toggle').checked;
     try {
       const bom = await api.generateBom({ project: sel.value, budget, bluetooth: bt });
+      state.userSelectedBom = true;
       renderBomView(bom);
     } catch (err) {
       alert('Error generating BOM: ' + err.message);
@@ -1518,6 +1606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (bom.status === 'suggest') {
         alert('Suggested similar catalog projects available.');
       } else {
+        state.userSelectedBom = true;
         renderBomView(bom);
       }
     } catch (err) {
@@ -1537,8 +1626,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderBomView(bom) {
     if (!bom) return;
     state.activeBom = bom;
+    const budgetControl = document.getElementById('bom-budget-control');
+    if (budgetControl) budgetControl.hidden = state.userSelectedBom;
     state.wiringData = null;
     state.optimizerEvaluation = null;
+    const powerBankAction = document.getElementById('btn-use-powerbank');
+    if (powerBankAction) {
+      const battery = Object.entries(bom.parts || {}).find(([role, part]) => part && !part.none &&
+        (['battery', 'power'].includes(role) || ['battery', 'power'].includes(part.role)));
+      powerBankAction.hidden = !battery || /power.?bank/i.test(`${battery?.[1]?.id || ''} ${battery?.[1]?.name || ''}`);
+    }
     updateWorkflowNavigation();
 
     const heading = document.getElementById('bom-project-heading');
@@ -1607,10 +1704,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     Object.entries(parts).forEach(([role, part]) => {
       if (part.none) return;
       const line = lineMap[part.id] || { qty: 1, unit: part.seed_price ?? null, source: 'estimate' };
-      const statusLabel = line.source === 'live' ? 'LIVE PRICE' : (line.source === 'manual' ? 'YOUR PICK' : 'ESTIMATED');
-      const badgeCls = line.source === 'live' ? 'PASS' : (line.source === 'manual' ? 'WARN' : 'UNKNOWN');
+      const statusLabel = line.source === 'owned' ? 'ALREADY OWNED' : (line.source === 'live' ? 'LIVE PRICE' : (line.source === 'manual' ? 'YOUR PICK' : 'ESTIMATED'));
+      const badgeCls = (line.source === 'live' || line.source === 'owned') ? 'PASS' : (line.source === 'manual' ? 'WARN' : 'UNKNOWN');
       const priceText = (line.unit !== null && line.unit !== undefined) ? `₹${formatPrice(line.unit * line.qty)}` : '—';
-      const offerInfo = partsOffers[part.id] || { verified: [], unverified: [] };
+      const offerInfo = part.owned ? { verified: [], unverified: [] } : (partsOffers[part.id] || { verified: [], unverified: [] });
       const chosenUrl = manual[part.id] ? null : (choice[part.id] || (offerInfo.verified[0]?.url));
 
       const card = document.createElement('div');
@@ -1784,7 +1881,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rowsHtml = lines.map(l => {
       let kind = 'est';
       let statusText = 'Estimated catalog price';
-      if (l.source === 'live') {
+      if (l.source === 'owned') {
+        kind = 'best';
+        statusText = 'Already owned; ₹0 marginal cost';
+      } else if (l.source === 'live') {
         kind = 'best';
         statusText = 'Cheapest online price';
       } else if (l.source === 'manual') {
@@ -1818,9 +1918,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }).join('');
 
     const nLive = tot.n_live ?? lines.filter(l => l.source === 'live').length;
-    const pricesText = nLive === lines.length
+    const nOwned = tot.n_owned ?? lines.filter(l => l.source === 'owned').length;
+    const pricesText = nOwned === lines.length
+      ? 'Existing club-owned equipment'
+      : nLive === lines.length
       ? `All ${lines.length} live from shops`
-      : (nLive ? `${nLive} of ${lines.length} live from shops` : 'Estimated catalog seed prices');
+      : (nLive ? `${nLive} of ${lines.length} live from shops${nOwned ? ` · ${nOwned} already owned` : ''}` : (nOwned ? `Estimated catalog prices · ${nOwned} already owned` : 'Estimated catalog seed prices'));
 
     let extraHtml = '';
     if (tot.premium && tot.premium > 0.005) {

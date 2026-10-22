@@ -74,6 +74,10 @@ class OptimizerSwapRequest(BaseModel):
     staged_fixes: Optional[List[str]] = None
 
 
+class OptimizerFixRequest(BaseModel):
+    fix_id: str = Field(..., max_length=80)
+
+
 
 class GuidesResearchRequest(BaseModel):
     project_label: Optional[str] = None

@@ -24,8 +24,9 @@
     const kind = c.kind === 'vendor_switch' ? 'Same part, different shop' : 'Part swap';
     const d = c.cost_delta || 0;
     const delta = d === 0 ? 'no price change' : (d < 0 ? 'saves ' : 'costs ') + inr(Math.abs(d));
-    const why = (c.reasons || []).map((r) =>
-      `<div><span class="replan-badge ${r.code === 'sold_out' ? 'bad' : 'warn'}">${r.code === 'sold_out' ? 'Sold out' : 'Budget'}</span>${esc(r.text)}</div>`).join('');
+    const why = (c.reasons || []).map((r) => {
+      return `<div><span class="replan-badge ${r.code === 'sold_out' ? 'bad' : 'warn'}">${r.code === 'sold_out' ? 'Sold out' : 'Budget'}</span>${esc(r.text)}</div>`;
+    }).join('');
     const q = c.data_quality ? `<div class="caption">Prices: ${esc(c.data_quality.old)} → ${esc(c.data_quality.new)}${
       (c.data_quality.old === 'seed' || c.data_quality.new === 'seed') ? ' (seed = team estimate, not yet verified on a shop page)' : ''}</div>` : '';
     const link = c.source_url ? `<div class="caption"><a href="${esc(c.source_url)}" target="_blank" rel="noopener noreferrer">Open the in-stock listing</a></div>` : '';
@@ -39,15 +40,27 @@
 
   function render(p) {
     const b = p.budget, g = p.guards;
-    const badge = { fits: ['fits', 'Fits the new budget'], over_budget: ['bad', 'Still over budget'], partial: ['warn', 'Partly resolved'], blocked: ['bad', 'No safe plan found'] }[p.status] || ['warn', p.status];
+    const compat = g.compat_after || {};
+    const failed = Number(compat.fail || 0);
+    const beforeTotal = Number(b.before_total || 0), afterTotal = Number(b.after_total || 0);
+    const totalDelta = beforeTotal - afterTotal;
+    let badge = { fits: ['fits', 'Fits the new budget'], over_budget: ['bad', 'Still over budget'], partial: ['warn', 'Partly resolved'], blocked: ['bad', 'No safe plan found'] }[p.status] || ['warn', p.status];
+    if (p.status === 'fits' && failed) badge = ['warn', 'Within budget · compatibility issues remain'];
+    const budgetDelta = Number(b.old || 0) - Number(b.new || 0);
+    const budgetPct = b.cut_pct == null ? '—' : `${Number(b.cut_pct).toLocaleString('en-IN', { maximumFractionDigits: 1 })}%`;
+    const compatTitle = failed ? 'Still incompatible' : (compat.state === 'caution' ? 'Needs review' : 'Compatible');
+    const compatDetail = g.no_rule_worse
+      ? (failed ? `No rule worsened · ${failed} existing failure${failed === 1 ? '' : 's'} remain` : 'No compatibility rules worsened')
+      : 'Compatibility regressions need review';
     let html = `<p><span class="replan-badge ${badge[0]}">${badge[1]}</span></p>
       <div class="replan-summary">
-        <div>Budget<b>${inr(b.old)} → ${inr(b.new)}</b><span class="caption">−${b.cut_pct}%</span></div>
-        <div>Total<b>${inr(b.before_total)} → ${inr(b.after_total)}</b></div>
-        <div>${b.shortfall > 0 ? 'Over by' : 'Left'}<b>${inr(b.shortfall > 0 ? b.shortfall : b.left)}</b></div>
-        <div>Compatibility<b>${esc(g.compat_before.state)} → ${esc(g.compat_after.state)}</b><span class="caption">${g.no_rule_worse ? 'no rule got worse' : 'a rule got worse'}</span></div>
+        <div class="replan-metric"><span>New budget</span><b>${inr(b.new)}</b><small>Reduced by ${inr(budgetDelta)} (${budgetPct}) from ${inr(b.old)}</small></div>
+        <div class="replan-metric"><span>Estimated BOM total</span><b>${inr(afterTotal)}</b><small>Was ${inr(beforeTotal)} · ${totalDelta >= 0 ? 'saves ' : 'adds '}${inr(Math.abs(totalDelta))}</small></div>
+        <div class="replan-metric"><span>${b.shortfall > 0 ? 'Still over budget' : 'Budget remaining'}</span><b>${inr(b.shortfall > 0 ? b.shortfall : b.left)}</b><small>${b.shortfall > 0 ? 'The proposed BOM exceeds the new budget' : 'After the proposed BOM'}</small></div>
+        <div class="replan-metric ${failed ? 'has-issues' : ''}"><span>Compatibility</span><b>${compatTitle}</b><small>${compatDetail}</small></div>
       </div>`;
-    if (p.status === 'over_budget') html += `<p class="caption"><b>Honest result:</b> no further safe saving exists. This is the cheapest plan that keeps every check passing; ${inr(b.shortfall)} is still over. Raise the budget, drop a feature, or accept a part you choose yourself in the optimizer.</p>`;
+    if ((g.regressions || []).length) html += `<div class="replan-change"><b>Compatibility changes to review</b>${g.regressions.map((r) => `<div>${esc(r.title)}: ${esc(r.was)} → ${esc(r.now)}</div>`).join('')}</div>`;
+    if (p.status === 'over_budget') html += `<p class="caption"><b>Re-plan result:</b> no further safe saving passed the planner's checks. The proposal remains ${inr(b.shortfall)} over budget${failed ? ` and has ${failed} compatibility failure${failed === 1 ? '' : 's'}` : ''}. Raise the budget, drop a feature, or choose a change in the optimizer.</p>`;
     (p.unresolved || []).forEach((u) => {
       html += `<div class="replan-change"><span class="replan-badge bad">Needs your decision</span><b>${esc(u.role)}</b><div>${esc(u.text)}</div>${
         (u.rejected || []).length ? `<div class="caption">Rejected: ${u.rejected.map((r) => `${esc(r.name)} (${esc(r.why)})`).join('; ')}</div>` : ''}</div>`;

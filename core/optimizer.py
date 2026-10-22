@@ -108,7 +108,11 @@ def _price(parts, live):
     for r, p in parts.items():
         if not isinstance(p, dict) or p.get("none"): continue
         pr, s = price_of(p, live); lines.append((pr, QTY.get(r, 1))); srcs.append(s)
-    q = "verified live prices" if all(s == "live" for s in srcs) else "estimates only" if all(s == "seed" for s in srcs) else "mixed: some live, some estimates"
+    q = ("verified live prices" if srcs and all(s == "live" for s in srcs)
+         else "owned equipment at ₹0 plus seed estimates" if "owned" in srcs and any(s == "seed" for s in srcs)
+         else "owned equipment at ₹0" if srcs and all(s == "owned" for s in srcs)
+         else "estimates only" if all(s == "seed" for s in srcs)
+         else "mixed: some live, some estimates")
     return calc.bom_total(lines), q
 
 def _row(key, name, unit, orig, prop, higher, quality, reason, evidence=None):

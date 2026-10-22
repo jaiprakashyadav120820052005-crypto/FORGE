@@ -3441,20 +3441,17 @@
   "pow_power_bank": {
    "id": "pow_power_bank",
    "role": "power",
-   "name": "5V USB power bank",
-   "price_inr": 850,
+   "name": "Existing 5V USB power bank (exact model unknown)",
+   "price_inr": 0,
    "kind": "battery_pack",
    "legacy_id": null,
    "component_id": null,
    "attrs": {
     "nominal_v": 5.0,
-    "max_v": 5.2,
-    "max_a": 2.4,
-    "capacity_mah": 10000,
-    "weight_g": 220
+    "out_v": 5.0
    },
-   "origin": "curated",
-   "confidence": "typical"
+   "origin": "generic",
+   "confidence": "unverified"
   },
   "pow_tp4056_mod": {
    "id": "pow_tp4056_mod",

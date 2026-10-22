@@ -13,8 +13,9 @@ CATALOG = [
  P("bat_1s","battery","1S Li-ion (3.7V)",200,"18650 battery 3.7V",nominal_v=3.7,max_v=4.2),
  P("bat_2s","battery","2S Li-ion (7.4V)",450,"2S 7.4V 18650 battery pack",nominal_v=7.4,max_v=8.4),
  P("bat_3s","battery","3S Li-ion (11.1V)",700,"3S 11.1V 18650 battery pack",nominal_v=11.1,max_v=12.6),
+ dict(P("pow_power_bank","battery","Existing 5V USB power bank (owned; regulated 5V mode)",0,"",kind="power_bank",nominal_v=5.0,out_v=5.0), owned=True),
  P("sen_line5","sensor","5-channel line array",150,"5 channel IR line follower sensor array","line",supply_min_v=3.3,supply_max_v=5),
- P("sen_hcsr04","sensor","HC-SR04 ultrasonic",90,"HC-SR04 ultrasonic sensor","distance",supply_min_v=5,supply_max_v=5),
+ P("sen_hcsr04","sensor","HC-SR04 ultrasonic",90,"HC-SR04 ultrasonic sensor","distance",supply_min_v=5,supply_max_v=5,output_high_v=5),
 ]
 # Non-electronic extras every build needs. Prices are rough ESTIMATES until live sourcing finds a verified price.
 # Caution: pick chassis kits WITHOUT motors, or the motors get counted twice. Chassis-to-motor fit is not rule-checked yet.
@@ -69,5 +70,5 @@ RULES = [
  dict(id="motor_voltage", title="Motor voltage after driver drop is in range", needs=["b.nominal_v","b.max_v","d.drop_v","m.min_v","m.max_v"], check="b.nominal_v - d.drop_v >= m.min_v and b.max_v - d.drop_v <= m.max_v", fail="Motors would see {b.nominal_v}-{b.max_v} V minus {d.drop_v} V drop; rated {m.min_v}-{m.max_v} V"),
  dict(id="driver_stall", title="Driver covers motor stall current", needs=["d.max_a","m.stall_a"], check="d.max_a >= m.stall_a", fail="Driver {d.max_a} A is below motor stall current {m.stall_a} A"),
  dict(id="ctrl_vin", title="Battery within controller input range", needs=["c.vin_min_v","c.vin_max_v","b.nominal_v","b.max_v"], check="c.vin_min_v <= b.nominal_v and b.max_v <= c.vin_max_v", fail="Battery {b.nominal_v}-{b.max_v} V is outside controller input {c.vin_min_v}-{c.vin_max_v} V"),
- dict(id="logic_level", uses_sensor=True, title="Controller logic level suits the sensor", needs=["s.supply_min_v","s.supply_max_v","c.logic_v"], check="s.supply_min_v <= c.logic_v <= s.supply_max_v", fail="Controller logic {c.logic_v} V is outside the sensor's {s.supply_min_v}-{s.supply_max_v} V supply"),
+ dict(id="logic_level", uses_sensor=True, title="Sensor signal voltage is safe for controller GPIO", needs=["s.output_high_v","c.logic_v"], check="s.output_high_v <= c.logic_v", fail="Sensor output can reach {s.output_high_v} V, above the controller's {c.logic_v} V GPIO logic level"),
 ]

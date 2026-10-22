@@ -14,10 +14,14 @@ def build_record(role, pa, pb):
 def lookup(role, pa, pb, persist=True):
     """pa/pb: profiles (not None). Returns (record, how) with how in {'dataset','computed'}."""
     if pa["id"] == pb["id"]: return dict(role=role, a=pa["id"], b=pb["id"], chips=[], deltas=[], quality="typical"), "dataset"
-    key = pair_key(role, pa["id"], pb["id"]); hit = profiles.load()["pairs"].get(key)
+    key = pair_key(role, pa["id"], pb["id"])
+    # The generic owned power-bank profile intentionally has no assumed current, capacity, or weight.
+    # Old curated pair rows contain made-up generic values, so always recompute these comparisons.
+    generic_bank_pair = "pow_power_bank" in (pa["id"], pb["id"])
+    hit = None if generic_bank_pair else profiles.load()["pairs"].get(key)
     if hit: return hit, "dataset"
     rec = build_record(role, pa, pb)
-    if persist:
+    if persist and not generic_bank_pair:
         try: profiles.add_pair(key, rec)
         except OSError: pass          # read-only deployment: still return the computed answer
     return rec, "computed"

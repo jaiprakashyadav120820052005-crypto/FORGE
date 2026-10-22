@@ -93,6 +93,9 @@ def source_part(part, log=print, gemini_max=None):
     """Search -> Fetch -> verified read for one part. Returns offers (price None if unverified).
     Prices are read from the page by rules first (free); Gemini is only a backup, at most `gemini_max` pages per part
     (env GEMINI_FALLBACK_MAX, default 1; 0 = never use Gemini)."""
+    if part.get("owned"):
+        log(f"Skipping {part['name']}: this item is marked as already owned.")
+        return []
     budget = dict(left=int(os.getenv("GEMINI_FALLBACK_MAX", "1")) if gemini_max is None else gemini_max)
     log(f"Searching for {part['name']}...")
     hits = tf.search(part["query"] + " buy India price")[:8]
@@ -125,6 +128,11 @@ def spread_warning(offers, ratio=3.0):
 
 def price_of(part, live):
     pid = (part or {}).get("id")
+    # Owned equipment has zero marginal BOM cost; don't revive an old market quote for it.
+    if part and part.get("owned"):
+        for key in ("seed_price", "price_inr", "price"):
+            if part.get(key) is not None:
+                return (part[key], "owned")
     vals = [o["price"] for o in (live or {}).get(pid, []) if pagerules.trusted_price(o) and not o.get("suspect")]
     if vals:
         return (min(vals), "live")
@@ -147,11 +155,11 @@ def candidate_parts(robot):
     """Every catalog part this build could use (all controllers, drivers, motors, batteries, the right sensors) plus the extras.
     Pricing all of them, not only today's winner, keeps the cost comparison fair."""
     kind = PROJECTS[robot]["sensor"]
-    return [p for p in CATALOG if p["role"] != "sensor" or (kind is not None and p["kind"] == kind)] + list(EXTRAS)
+    return [p for p in CATALOG if not p.get("owned") and (p["role"] != "sensor" or (kind is not None and p["kind"] == kind))] + list(EXTRAS)
 
 def select(robot, budget, needs_bt=False, live=None):
     live = live or {}
-    by = {r: [p for p in CATALOG if p["role"] == r] for r in ("controller", "driver", "motor", "battery", "sensor")}
+    by = {r: [p for p in CATALOG if p["role"] == r and not p.get("owned")] for r in ("controller", "driver", "motor", "battery", "sensor")}
     kind = PROJECTS[robot]["sensor"]
     by["sensor"] = [NONE_SENSOR] if kind is None else [p for p in by["sensor"] if p["kind"] == kind]
     rows = []

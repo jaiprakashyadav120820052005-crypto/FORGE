@@ -25,7 +25,7 @@
 
     <nav id="workflow-nav" class="workflow-nav" aria-label="Build workflow" hidden>
       <button class="workflow-step" type="button" data-flow-go="recommend">
-        <span class="workflow-step-number">01</span><span><b>Recommend</b><small>Choose a project</small></span>
+        <span class="workflow-step-number">01</span><span><b>Choose a project</b><small>Find your next build</small></span>
       </button>
       <span class="workflow-connector" aria-hidden="true"></span>
       <button class="workflow-step" type="button" data-flow-go="source">
@@ -253,7 +253,7 @@
         <!-- Catalog Selector & Ideation Input Card -->
         <div class="card" id="bom-setup-panel">
           <div class="grid-2" style="margin-bottom:14px;">
-            <div>
+            <div id="bom-budget-control">
               <label><b>Budget (₹)</b></label>
               <input type="number" id="bom-budget-input" value="3500" step="500" min="1000">
             </div>
@@ -347,6 +347,7 @@
             </div>
             <button class="btn" id="btn-toggle-optimizer" type="button" aria-expanded="false" aria-controls="optimizer-content">Open optimizer</button>
           </div>
+          <button class="btn" id="btn-use-powerbank" type="button" hidden>Compare an existing 5V power bank</button>
           <div id="optimizer-content" hidden>
             <div class="optimizer-controls">
               <label>
@@ -624,11 +625,19 @@
           <button class="btn" id="btn-build-back-to-source" type="button">Back to BOM &amp; sourcing</button>
         </div>
 
+        <section id="build-resource-mount" class="build-resources" aria-label="Build references"></section>
+
         <div class="build-risk-banner" role="note">
           <b>Risk-reduction guide, not a safety certification.</b>
           FORGE's generated wiring and typical component specs may not match the exact board revision you received. Verify pin limits and electrical ratings against the manufacturer's documentation before connecting power.
         </div>
         <div id="build-signal-warning" class="build-signal-warning" role="alert" hidden></div>
+        <div id="build-power-warning" class="build-signal-warning" role="alert" hidden></div>
+        <div id="build-safety-action" class="build-safety-action" hidden>
+          <p id="build-safety-action-copy" class="caption"></p>
+          <button class="btn" id="btn-build-add-level-shifter" type="button">Add a logic level shifter to this BOM</button>
+          <span id="build-safety-action-status" class="caption" role="status" aria-live="polite"></span>
+        </div>
 
         <section class="build-section" aria-labelledby="build-preflight-heading">
           <div class="build-section-heading">
@@ -666,7 +675,6 @@
           <b>STOP immediately:</b> if anything smokes, smells burnt, becomes unexpectedly hot, resets repeatedly, draws unexpected current, or a measured voltage is out of range, disconnect power. Do not continue troubleshooting while energized.
         </div>
 
-        <section id="build-resource-mount" class="build-resources" aria-label="Build references"></section>
       </section>
     </main>
   </div>

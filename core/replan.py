@@ -190,7 +190,7 @@ def plan(parts, live, *, budget_old, budget_new=None, cut_pct=None, sold_out=Non
                     compat=dict(regressions=[]), impact=[], source_url=best["url"]))
                 continue
         cands = [c for c in opt.candidates(current, part.get("role", role), part.get("kind") if part.get("role") == "sensor" else None)
-                 if c["id"] != pid and c["id"] not in sold_out]
+                 if c["id"] != pid and c["id"] not in sold_out and (not c.get("owned") or part.get("owned"))]
         tried, ok = [], []
         for c in cands:
             ev = _evaluate_move(current, role, c, records, work_live, needs_bt, base_check)
@@ -226,6 +226,8 @@ def plan(parts, live, *, budget_old, budget_new=None, cut_pct=None, sold_out=Non
             kind = part.get("kind") if part.get("role") == "sensor" else None
             for c in opt.candidates(current, part.get("role", role), kind):
                 if c["id"] == part.get("id") or c["id"] in sold_out:
+                    continue
+                if c.get("owned") and not part.get("owned"):
                     continue
                 c_unit = price_of(c, work_live)[0]
                 if not c_unit or c_unit >= cur_unit:     # unpriced candidates are never 'cheaper': 0 means unknown, not free

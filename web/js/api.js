@@ -184,6 +184,14 @@ const api = {
     });
   },
 
+  async applySafetyFix(fix_id) {
+    return this.req('/api/optimizer/apply-fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fix_id })
+    });
+  },
+
   async getOptimizerCandidates(role) {
     return this.req(`/api/optimizer/candidates?role=${encodeURIComponent(role)}`);
   },

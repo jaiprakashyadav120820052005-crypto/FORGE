@@ -87,7 +87,9 @@ SPECS = {
     "lipo_1s_micro": S(nominal_v=3.7, max_v=4.2, cells_s=1, capacity_mah=500), "lipo_1s_hd": S(nominal_v=3.7, max_v=4.2, cells_s=1, capacity_mah=450, c_rating=45),
     "lipo_hd": S(nominal_v=14.8, max_v=16.8, cells_s=4, capacity_mah=1500, c_rating=100), "lipo_3s_2200": S(nominal_v=11.1, max_v=12.6, cells_s=3, capacity_mah=2200, c_rating=30),
     "liion_longrange": S(nominal_v=14.4, max_v=16.8, cells_s=4, capacity_mah=4000), "bat_aa4": S(nominal_v=6.0, max_v=6.4, cells_s=4, capacity_mah=2500),
-    "cr2032": S(nominal_v=3.0, max_v=3.3, capacity_mah=220), "power_bank": S(out_v=5, out_a=2, capacity_mah=10000),
+    "cr2032": S(nominal_v=3.0, max_v=3.3, capacity_mah=220),
+    # Generic bank profiles only describe the nominal 5V default USB output; exact voltage/current limits vary by model.
+    "power_bank": S(nominal_v=5.0, out_v=5.0),
     "tp4056": S(vin_min_v=4, vin_max_v=8, out_v=4.2, charge_a=1.0), "charger_2s": S(out_v=8.4, cells_s=2), "lipo_charger": S(charge_a=6),
     "bms2s": S(cells_s=2, max_v=8.4), "buck": S(vin_min_v=4, vin_max_v=35, out_a=3, efficiency_pct=80),
     "buck_5v_3a": S(out_v=5, out_a=3), "buck_5v_4a": S(out_v=5, out_a=4), "bec_high_current": S(out_v=5, out_a=10),

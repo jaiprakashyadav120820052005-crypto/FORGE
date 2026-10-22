@@ -97,6 +97,11 @@ def _mermaid_label(value: Any) -> str:
 def generate_wiring(parts: Dict[str, Any], project_label: str = "Robot Build") -> Dict[str, Any]:
     """Generate pin-to-pin wiring connections, Wokwi diagram.json, and starter Arduino code."""
     ctrl_key, ctrl = _detect_controller(parts)
+    has_level_shifter = any(
+        isinstance(part, dict) and "shifter" in f"{part.get('id', '')} {part.get('name', '')}".lower()
+        for part in parts.values()
+    )
+    protect_5v_echo = has_level_shifter and ctrl["logic_v"] <= 3.3
     connections: List[Dict[str, Any]] = []
     wokwi_parts: List[Dict[str, Any]] = []
     wokwi_connections: List[List[Any]] = []
@@ -114,6 +119,8 @@ def generate_wiring(parts: Dict[str, Any], project_label: str = "Robot Build") -
         "left": 250,
         "attrs": {}
     })
+    if protect_5v_echo:
+        wokwi_parts.append({"type": "wokwi-logic-level-shifter", "id": "logic-shifter", "top": 40, "left": 410, "attrs": {}})
 
     # Keep track of assigned pins for starter code generation
     firmware_defines: List[Tuple[str, str, str]] = []
@@ -224,18 +231,40 @@ def generate_wiring(parts: Dict[str, Any], project_label: str = "Robot Build") -
             trig_pin = "D11" if ctrl_key == "nano" else "5"
             echo_pin = "D12" if ctrl_key == "nano" else "18"
 
+            echo_connections = ([
+                {"from_part": "HC-SR04 Ultrasonic", "from_pin": "ECHO", "to_part": "Logic Level Shifter", "to_pin": "HV1", "type": "DIGITAL", "color": COLOR_MAP["DIGITAL"], "note": "5V ECHO enters the high-voltage side"},
+                {"from_part": "Logic Level Shifter", "from_pin": "LV1", "to_part": ctrl["name"], "to_pin": echo_pin, "type": "DIGITAL", "color": COLOR_MAP["DIGITAL"], "note": "Translated to the controller's 3.3V logic level"},
+            ] if protect_5v_echo else [
+                {"from_part": "HC-SR04 Ultrasonic", "from_pin": "ECHO", "to_part": ctrl["name"], "to_pin": echo_pin, "type": "DIGITAL", "color": COLOR_MAP["DIGITAL"], "note": "Echo response pulse" + (" (use a divider or level shifter for 3.3V ESP32)" if ctrl["logic_v"] == 3.3 else "")},
+            ])
             connections.extend([
                 {"from_part": "HC-SR04 Ultrasonic", "from_pin": "VCC", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["5V"], "type": "5V", "color": COLOR_MAP["5V"], "note": "Requires 5V operating voltage"},
                 {"from_part": "HC-SR04 Ultrasonic", "from_pin": "GND", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["GND"], "type": "GND", "color": COLOR_MAP["GND"], "note": "Common ground"},
-                {"from_part": "HC-SR04 Ultrasonic", "from_pin": "TRIG", "to_part": ctrl["name"], "to_pin": trig_pin, "type": "DIGITAL", "color": COLOR_MAP["DIGITAL"], "note": "Trigger 10µs pulse output"},
-                {"from_part": "HC-SR04 Ultrasonic", "from_pin": "ECHO", "to_part": ctrl["name"], "to_pin": echo_pin, "type": "DIGITAL", "color": COLOR_MAP["DIGITAL"], "note": "Echo response pulse" + (" (use 1k/2k divider for 3.3V ESP32)" if ctrl["logic_v"]==3.3 else "")},
+                {"from_part": "HC-SR04 Ultrasonic", "from_pin": "TRIG", "to_part": ctrl["name"], "to_pin": trig_pin, "type": "DIGITAL", "color": COLOR_MAP["DIGITAL"], "note": "Trigger 10µs pulse output; verify the exact module accepts 3.3V logic"},
+                *echo_connections,
             ])
+            if protect_5v_echo:
+                connections.extend([
+                    {"from_part": "Logic Level Shifter", "from_pin": "HV", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["5V"], "type": "5V", "color": COLOR_MAP["5V"], "note": "High-side reference; verify this matches the module"},
+                    {"from_part": "Logic Level Shifter", "from_pin": "LV", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["3V3"], "type": "3.3V", "color": COLOR_MAP["3.3V"], "note": "Low-side reference for the 3.3V controller"},
+                    {"from_part": "Logic Level Shifter", "from_pin": "GND", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["GND"], "type": "GND", "color": COLOR_MAP["GND"], "note": "Common ground"},
+                ])
             wokwi_connections.extend([
                 [f"{ctrl_key}:{ctrl['pins']['5V']}", f"{u_id}:VCC", "red", ["v0"]],
                 [f"{ctrl_key}:{ctrl['pins']['GND']}", f"{u_id}:GND", "black", ["v0"]],
                 [f"{ctrl_key}:{trig_pin}", f"{u_id}:TRIG", "orange", ["v0"]],
-                [f"{ctrl_key}:{echo_pin}", f"{u_id}:ECHO", "green", ["v0"]],
             ])
+            if protect_5v_echo:
+                wokwi_connections.extend([
+                    [f"{ctrl_key}:{ctrl['pins']['5V']}", "logic-shifter:HV", "red", ["v0"]],
+                    [f"{ctrl_key}:{ctrl['pins']['3V3']}", "logic-shifter:LV", "red", ["v0"]],
+                    [f"{ctrl_key}:{ctrl['pins']['GND']}", "logic-shifter:GND1", "black", ["v0"]],
+                    [f"{ctrl_key}:{ctrl['pins']['GND']}", "logic-shifter:GND2", "black", ["v0"]],
+                    [f"{u_id}:ECHO", "logic-shifter:HV1", "green", ["v0"]],
+                    ["logic-shifter:LV1", f"{ctrl_key}:{echo_pin}", "green", ["v0"]],
+                ])
+            else:
+                wokwi_connections.append([f"{ctrl_key}:{echo_pin}", f"{u_id}:ECHO", "green", ["v0"]])
             firmware_defines.extend([
                 ("TRIG_PIN", trig_pin.replace("D", ""), "Ultrasonic Trigger Pin"),
                 ("ECHO_PIN", echo_pin.replace("D", ""), "Ultrasonic Echo Pin"),
@@ -323,10 +352,17 @@ def generate_wiring(parts: Dict[str, Any], project_label: str = "Robot Build") -
 
         # ---------------- 5. POWER & BATTERY ----------------
         elif prole == "battery" or "bat" in pid or "battery" in pname:
-            connections.extend([
-                {"from_part": part.get("name", "Battery Pack"), "from_pin": "(+) Positive Lead", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["VIN"], "type": "POWER", "color": COLOR_MAP["POWER"], "note": "Raw battery voltage to onboard VIN regulator"},
-                {"from_part": part.get("name", "Battery Pack"), "from_pin": "(-) Ground Lead", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["GND2"] if "GND2" in ctrl["pins"] else ctrl["pins"]["GND"], "type": "GND", "color": COLOR_MAP["GND"], "note": "Common battery ground rail"},
-            ])
+            if re.search(r"power.?bank", f"{pid} {pname}"):
+                power_input = "USB input (5V; do not use VIN)" if ctrl_key in ("nano", "uno") else "5V/VIN input (verify exact board)"
+                connections.extend([
+                    {"from_part": part.get("name", "5V USB Power Bank"), "from_pin": "USB 5V output", "to_part": ctrl["name"], "to_pin": power_input, "type": "5V", "color": COLOR_MAP["5V"], "note": "Use documented 5V default mode only; verify the exact board input. Never connect 5V to Nano/Uno VIN."},
+                    {"from_part": part.get("name", "5V USB Power Bank"), "from_pin": "USB ground", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["GND"], "type": "GND", "color": COLOR_MAP["GND"], "note": "Common ground; use a suitable USB cable/adapter and preserve connector polarity."},
+                ])
+            else:
+                connections.extend([
+                    {"from_part": part.get("name", "Battery Pack"), "from_pin": "(+) Positive Lead", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["VIN"], "type": "POWER", "color": COLOR_MAP["POWER"], "note": "Raw battery voltage to onboard VIN regulator"},
+                    {"from_part": part.get("name", "Battery Pack"), "from_pin": "(-) Ground Lead", "to_part": ctrl["name"], "to_pin": ctrl["pins"]["GND2"] if "GND2" in ctrl["pins"] else ctrl["pins"]["GND"], "type": "GND", "color": COLOR_MAP["GND"], "note": "Common battery ground rail"},
+                ])
 
     # If no specific modules matched, ensure standard basic power rails are documented
     if len(connections) <= 2:

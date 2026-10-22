@@ -2,9 +2,9 @@ import copy
 from typing import List, Optional
 from fastapi import APIRouter, Cookie, HTTPException
 
-from core import auto_fix, component_catalog as cat, optimizer as opt, pipeline
+from core import auto_fix, component_catalog as cat, compatibility_engine, optimizer as opt, pipeline
 from core.data import PROJECTS
-from server.schemas import OptimizerSwapRequest
+from server.schemas import OptimizerFixRequest, OptimizerSwapRequest
 from server.state import store
 
 router = APIRouter(prefix="/api/optimizer", tags=["optimizer"])
@@ -204,6 +204,8 @@ def apply_swap(req: OptimizerSwapRequest, forge_session: Optional[str] = Cookie(
 
     for p in parts_to_source:
         pid = p.get("id")
+        if p.get("owned"):
+            continue
         if pid and pid not in session.live:
             try:
                 p_copy = copy.deepcopy(p)
@@ -212,6 +214,43 @@ def apply_swap(req: OptimizerSwapRequest, forge_session: Optional[str] = Cookie(
             except Exception:
                 pass
 
+    return {"status": "ok", "swaps": {role: part.get("id") for role, part in session.opt_swaps.items()}}
+
+
+@router.post("/apply-fix")
+def apply_compatibility_fix(req: OptimizerFixRequest, forge_session: Optional[str] = Cookie(None)):
+    session = store.get_or_create(forge_session)
+    parts = _active_parts(session)
+    checks = compatibility_engine.check(
+        opt.effective(parts, cat.load()),
+        needs_bt=session.bluetooth or PROJECTS.get(session.project, {}).get("bt", False),
+    )
+    failed_ids = {row.get("rule_id") for row in checks if row.get("status") == "FAIL"}
+    fix = auto_fix.AUTO_FIX_CATALOG.get(req.fix_id)
+    offered = [option for rule_id in failed_ids for option in auto_fix.get_fixes_for_rule(rule_id, parts)]
+    if not fix or fix not in offered:
+        raise HTTPException(status_code=409, detail="This fix is not available for a current compatibility failure")
+
+    proposed = auto_fix.apply_auto_fix(parts, req.fix_id)
+    proposed_checks = compatibility_engine.check(
+        opt.effective(proposed, cat.load()),
+        needs_bt=session.bluetooth or PROJECTS.get(session.project, {}).get("bt", False),
+    )
+    unresolved = [row for row in proposed_checks if row.get("rule_id") in fix.get("rule_ids", []) and row.get("status") == "FAIL"]
+    if unresolved:
+        raise HTTPException(status_code=409, detail="The fix did not resolve the compatibility failure")
+
+    for role, part in proposed.items():
+        if role not in parts or parts[role].get("id") != part.get("id"):
+            session.opt_swaps[role] = part
+    pid = fix["part"].get("id")
+    if pid and pid not in session.live and not fix["part"].get("owned"):
+        try:
+            source = copy.deepcopy(fix["part"])
+            source.setdefault("query", source.get("name", ""))
+            session.live[pid] = pipeline.source_part(source)
+        except Exception:
+            pass
     return {"status": "ok", "swaps": {role: part.get("id") for role, part in session.opt_swaps.items()}}
 
 

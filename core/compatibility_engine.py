@@ -1,6 +1,6 @@
 """Compatibility results with rule id, status, components, actual/limit, explanation and action.
 Wraps the existing rule engine (core/rules.py, core/data.RULES) and adds catalog-aware rules. PASS / WARN / FAIL / UNKNOWN; missing data is never a pass."""
-from .data import RULES
+from .data import QTY, RULES
 from .rules import evaluate
 
 ACTION = dict(batt_driver_min="Use a battery with a higher voltage or a driver with a lower minimum supply.",
@@ -33,6 +33,28 @@ def check(parts, catalog_by_legacy=None, needs_bt=False):
                                 f"Official docs only describe a {sup:g} V supply for {ctrl['name']}; the battery reaches {bmax:g} V and no wider input range is documented.",
                                 "Add a regulator (e.g. buck converter) to 5 V instead of connecting the battery directly.", actual=bmax, limit=sup, quality="verified"))
             else: out.append(_row("ctrl_fixed_supply", "Controller supply documented for this battery", "PASS", "controller, battery", "Battery within the documented supply.", actual=bmax, limit=sup, quality="verified"))
+    if bat and not bat.get("none") and "power bank" in f"{bat.get('id', '')} {bat.get('name', '')}".lower():
+        out.append(_row("power_bank_mode", "Power bank output mode and board input", "WARN", "battery, controller",
+                        "This option models only the bank's nominal 5V default USB mode. The exact output current, negotiated USB-PD mode, cable, and controller input port are not verified; check the labels and use the board's documented 5V input.",
+                        "Use USB input on Nano/Uno, the exact board's marked 5V input on ESP32, and never use a 9V/12V output mode.", quality="unknown"))
+        motor = parts.get("motor") or next((p for p in parts.values() if isinstance(p, dict) and p.get("role") == "motor"), None)
+        if motor and not motor.get("none"):
+            bank_a = (bat.get("specs") or {}).get("max_a")
+            bank_quality = "verified" if bat.get("_provenance", {}).get("max_a") == "verified" else "seed"
+            stall_a = (motor.get("specs") or {}).get("stall_a")
+            required_a = stall_a * (motor.get("qty") or QTY.get("motor", 1)) if stall_a is not None else None
+            if bank_a is None or required_a is None:
+                out.append(_row("power_bank_load", "Power bank output current vs motor load", "FAIL", "battery, motor",
+                                "This generic 5V power bank has no verified output-current limit, or the motor stall current is unknown. It cannot be approved as a motor supply. Keep a separately rated motor battery or provide verified ratings for both parts.",
+                                "Use a motor-rated battery or verify the exact power-bank output and motor stall current before considering this swap.", quality="seed"))
+            elif bank_a < required_a:
+                out.append(_row("power_bank_load", "Power bank output current vs motor load", "FAIL", "battery, motor",
+                                f"Recorded bank rating {bank_a:g} A is below the motors' combined stall current estimate {required_a:g} A.",
+                                "Use a motor-rated battery or a power source with a verified current rating above the combined load.", actual=bank_a, limit=required_a, quality=bank_quality))
+            else:
+                out.append(_row("power_bank_load", "Power bank output current vs motor load", "WARN", "battery, motor",
+                                f"The recorded bank rating ({bank_a:g} A) exceeds the estimated combined motor stall current ({required_a:g} A), but controller/sensor demand, motor startup transients, cable limits, and current limiting still need checking before Stage B.",
+                                actual=bank_a, limit=required_a, quality=bank_quality))
     return out
 
 def summary(rows):

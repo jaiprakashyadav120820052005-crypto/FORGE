@@ -29,7 +29,7 @@ def money(x, sym="₹"):
 
 def prices_text(tot):
     """'3 verified, 2 estimated' (+ ', 1 not found' when a part has no price at all)."""
-    return f"{tot['n_live']} verified, {tot['n_seed']} estimated" + (f", {tot['n_manual']} entered by you" if tot.get("n_manual") else "") + (f", {tot['n_missing']} not found" if tot.get("n_missing") else "")
+    return f"{tot['n_live']} verified, {tot['n_seed']} estimated" + (f", {tot.get('n_owned', 0)} already owned" if tot.get("n_owned") else "") + (f", {tot['n_manual']} entered by you" if tot.get("n_manual") else "") + (f", {tot['n_missing']} not found" if tot.get("n_missing") else "")
 
 def vendor(url):
     return (urlparse(url or "").netloc or "").removeprefix("www.") or "unknown shop"
@@ -85,6 +85,10 @@ def build_lines(parts, live, choice, manual=None):
         role = p.get("role", key)  # custom parts are keyed by id and carry their own role and quantity
         qty, offers = p.get("qty") or QTY.get(role, 1), offers_for(p["id"], live)
         base = dict(part_id=p["id"], role=role, name=p["name"], qty=qty)
+        if p.get("owned"):
+            lines.append(dict(base, unit=0, total=0, cheapest_total=0, source="owned", url="", vendor="", listing=None, quote=None,
+                              in_stock=None, is_cheapest=True, n_options=0))
+            continue
         man = manual_pick(p["id"], manual)
         if man:  # the user chose an unverified listing and typed the price they saw
             lines.append(dict(base, unit=man["price"], total=man["price"] * qty, cheapest_total=offers[0]["price"] * qty if offers else man["price"] * qty,
@@ -106,7 +110,7 @@ def build_lines(parts, live, choice, manual=None):
 def totals(lines, budget):
     sub = sum(l["total"] for l in lines); cheapest = sum(l["cheapest_total"] for l in lines)
     return dict(subtotal=sub, cheapest=cheapest, premium=sub - cheapest, budget=budget, left=budget - sub,
-                n_live=sum(l["source"] == "live" for l in lines), n_seed=sum(l["source"] == "seed" for l in lines), n_missing=sum(l["source"] == "missing" for l in lines), n_manual=sum(l["source"] == "manual" for l in lines), n_items=sum(l["qty"] for l in lines))
+                n_live=sum(l["source"] == "live" for l in lines), n_seed=sum(l["source"] == "seed" for l in lines), n_owned=sum(l["source"] == "owned" for l in lines), n_missing=sum(l["source"] == "missing" for l in lines), n_manual=sum(l["source"] == "manual" for l in lines), n_items=sum(l["qty"] for l in lines))
 
 def bill_ref(project_label, lines, day):
     h = hashlib.sha1((project_label + "|".join(f"{l['part_id']}:{l['url']}:{l['unit']}" for l in lines)).encode()).hexdigest()[:5].upper()
@@ -117,6 +121,7 @@ def status_of(l):
     if l["source"] == "missing": return "est", "No verified price yet, not in total"
     if l["source"] == "manual": return "pick", "Your pick, price entered by you (not verified)"
     if l["source"] == "seed": return "est", "Estimate, not verified"
+    if l["source"] == "owned": return "best", "Already owned; ₹0 marginal cost"
     if l["is_cheapest"]: return "best", "Cheapest verified"
     return "pick", f"Your pick, +{inr(l['total'] - l['cheapest_total'])}"
 

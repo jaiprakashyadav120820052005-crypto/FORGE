@@ -5,7 +5,8 @@ PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "components.jso
 KEYMAP = dict(vin_min_v="vin_min_v", vin_max_v="vin_max_v", logic_v="logic_v", bluetooth="bluetooth",
               supply_min_v="supply_min_v", supply_max_v="supply_max_v", drop_v="drop_v", continuous_current_a_per_channel="max_a",
               rated_voltage_min_v="min_v", rated_voltage_max_v="max_v", stall_current_a="stall_a",
-              nominal_v="nominal_v", full_charge_v="max_v")
+              nominal_v="nominal_v", full_charge_v="max_v", max_v="max_v",
+              max_continuous_discharge_a="max_a")
 CATEGORY_ROLE = dict(controller="controller", driver="driver", motor="motor", battery="battery", sensor="sensor")
 
 def load(path=PATH):
