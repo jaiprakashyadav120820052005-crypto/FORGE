@@ -20,6 +20,7 @@ class SessionData:
         self.examples: Optional[list] = None
         self.project: str = "line_follower"
         self.budget: int = 3500
+        self.initial_bom_total: Optional[float] = None  # immutable baseline for re-plan savings targets
         self.bluetooth: bool = False
         self.live: Dict[str, list] = {}  # {part_id: [offers]}
         self.choice: Dict[str, str] = {}  # {part_id: url}

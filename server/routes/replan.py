@@ -38,7 +38,8 @@ def preview(req: ReplanRequest, forge_session: Optional[str] = Cookie(None)):
     for k, v in req.sold_out_urls.items():
         urls[k] = sorted(set(urls.get(k, [])) | set(v))
     proposal = replan.plan(parts, session.live, budget_old=session.budget, budget_new=req.new_budget, cut_pct=req.cut_pct,
-                           sold_out=sold, sold_out_urls=urls, needs_bt=_needs_bt(session))
+                           sold_out=sold, sold_out_urls=urls, needs_bt=_needs_bt(session),
+                           original_bom_total=session.initial_bom_total)
     session.pending_replan = proposal           # kept server-side; the client only gets the public view
     return replan.public(proposal)
 
@@ -49,6 +50,8 @@ def accept(forge_session: Optional[str] = Cookie(None)):
     p = session.pending_replan
     if not p:
         raise HTTPException(status_code=409, detail="No pending re-plan. Preview one first.")
+    if p.get("can_accept") is False:
+        raise HTTPException(status_code=409, detail="The BOM savings target was not reached and no cost-reducing safe change is available. Discard this preview or choose a smaller reduction.")
     snapshot = dict(budget=session.budget, opt_swaps=copy.deepcopy(session.opt_swaps), live=copy.deepcopy(session.live),
                     sold_out=set(session.sold_out), sold_out_urls=copy.deepcopy(session.sold_out_urls))
     session.budget = p["budget"]["new"]

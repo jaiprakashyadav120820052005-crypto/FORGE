@@ -145,7 +145,8 @@ def _chips(res):
 
 
 # ------------------------------------------------------------------ the plan
-def plan(parts, live, *, budget_old, budget_new=None, cut_pct=None, sold_out=None, needs_bt=False, sold_out_urls=None):
+def plan(parts, live, *, budget_old, budget_new=None, cut_pct=None, sold_out=None, needs_bt=False, sold_out_urls=None,
+         original_bom_total=None):
     """Return a proposal. `parts` role->part, `live` {part_id: [offers]}, `sold_out` iterable of part ids,
     `sold_out_urls` {part_id: [urls]} for listing-level sold-out (the part itself may be fine at another shop)."""
     if budget_new is None:
@@ -163,6 +164,13 @@ def plan(parts, live, *, budget_old, budget_new=None, cut_pct=None, sold_out=Non
     original = opt.snapshot(parts)
     base_check = ce.check(opt.effective(original, records), needs_bt=needs_bt)
     before_total, before_unpriced = _total(original, live or {})
+    # A percentage entered in the re-plan panel is measured against the BOM total
+    # captured when this BOM was first generated, even if later swaps changed it.
+    target_total = None
+    baseline_total = original_bom_total if original_bom_total is not None else before_total
+    if cut_pct is not None and baseline_total > 0:
+        target_total = min(budget_new, baseline_total * (1 - cut_pct / 100.0))
+    cost_ceiling = target_total if target_total is not None else budget_new
     current, changes, unresolved = opt.snapshot(original), [], []
 
     # ---- phase 1: availability (sold out)
@@ -213,7 +221,7 @@ def plan(parts, live, *, budget_old, budget_new=None, cut_pct=None, sold_out=Non
     total, unpriced = _total(current, work_live)
     guard_notes = []
     for _ in range(MAX_MOVES):
-        if total <= budget_new:
+        if total <= cost_ceiling:
             break
         base_now = ce.check(opt.effective(current, records), needs_bt=needs_bt)
         best = None
@@ -256,12 +264,23 @@ def plan(parts, live, *, budget_old, budget_new=None, cut_pct=None, sold_out=Non
     after_check = ce.check(opt.effective(current, records), needs_bt=needs_bt)
     regs = _regressions(base_check, after_check)
     sb, sa = ce.summary(base_check), ce.summary(after_check)
-    fits = total <= budget_new
-    status = "blocked" if unresolved and not changes else "fits" if fits and not unresolved else "over_budget" if not fits else "partial"
+    fits_budget = total <= budget_new
+    target_met = total <= cost_ceiling
+    target_unmet = not target_met
+    status = ("over_budget" if not fits_budget else "target_unmet" if target_unmet else
+              "blocked" if unresolved and not changes else "partial" if unresolved else "fits")
+    # Never let a budget-only accept claim success when the requested BOM saving
+    # could not be made. A safe partial swap can still be accepted explicitly.
+    can_accept = target_met or (bool(changes) and (cut_pct is None or total < baseline_total))
     return dict(
         status=status,
         budget=dict(old=budget_old, new=budget_new, cut_pct=round(100 * (budget_old - budget_new) / budget_old, 1) if budget_old else None,
-                    before_total=before_total, after_total=total, left=budget_new - total, shortfall=max(0.0, total - budget_new)),
+                    before_total=before_total, after_total=total, left=budget_new - total, shortfall=max(0.0, total - budget_new),
+                    original_total=baseline_total, target_total=target_total,
+                    target_savings=(baseline_total - target_total) if target_total is not None else None,
+                    target_shortfall=max(0.0, total - target_total) if target_total is not None else 0.0,
+                    target_met=target_met),
+        can_accept=can_accept,
         changes=changes,
         unchanged=[r for r, p in current.items() if isinstance(p, dict) and not p.get("none") and original.get(r, {}).get("id") == p.get("id")],
         unresolved=unresolved,

@@ -320,9 +320,10 @@
           <div id="replan-content" hidden>
             <div id="replan-soldout" class="replan-soldout"></div>
             <div class="optimizer-controls" style="margin-top:10px;">
-              <label><b>Budget cut (%)</b><input id="replan-cut" type="number" min="1" max="99" value="25" style="margin-top:6px;"></label>
+              <label><b>Reduce original BOM (%)</b><input id="replan-cut" type="number" min="1" max="99" value="25" style="margin-top:6px;"></label>
               <button class="btn primary" id="btn-replan-preview" type="button">Preview re-plan</button>
             </div>
+            <p class="caption">The savings target uses the total captured when this BOM was first generated, even if later edits changed parts. The project budget is lowered by the same percentage.</p>
             <div id="replan-message" class="caption" role="status" aria-live="polite"></div>
             <div id="replan-result" hidden></div>
             <div class="optimizer-actions" id="replan-actions" hidden>

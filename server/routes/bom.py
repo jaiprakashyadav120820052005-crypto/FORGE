@@ -32,6 +32,14 @@ def _normalize_project_key(key):
     return key
 
 
+def _capture_initial_bom_total(session):
+    """Save the displayed estimate as this BOM's immutable re-plan baseline."""
+    parts = session.get_active_parts()
+    session.initial_bom_total = bill.make(
+        parts, session.live, session.choice, session.budget, session.get_build_label(), manual=session.manual
+    )["tot"]["subtotal"]
+
+
 @router.get("/catalog")
 def get_catalog():
     options = project_store.options()
@@ -62,6 +70,7 @@ def generate_bom(req: BomGenerateRequest, forge_session: Optional[str] = Cookie(
             needs_bt = req.bluetooth or PROJECTS[out["project"]]["bt"]
             session.res = pipeline.select(out["project"], req.budget, needs_bt, session.live)
             session.stage = "bom"
+            _capture_initial_bom_total(session)
             return _build_response_payload(session)
 
         if out["plan"] is None:
@@ -87,6 +96,7 @@ def generate_bom(req: BomGenerateRequest, forge_session: Optional[str] = Cookie(
         )
         session.bom_origin = plan["origin"]
         session.stage = "bom"
+        _capture_initial_bom_total(session)
         return _build_response_payload(session)
 
     # Catalog project selection flow
@@ -100,6 +110,7 @@ def generate_bom(req: BomGenerateRequest, forge_session: Optional[str] = Cookie(
         needs_bt = req.bluetooth or PROJECTS[project_id]["bt"]
         session.res = pipeline.select(project_id, req.budget, needs_bt, session.live)
         session.stage = "bom"
+        _capture_initial_bom_total(session)
         return _build_response_payload(session)
 
     plan = project_store.get_plan(key)
@@ -124,6 +135,7 @@ def generate_bom(req: BomGenerateRequest, forge_session: Optional[str] = Cookie(
                 session.bom_origin = plan["origin"]
                 session.project = key
                 session.stage = "bom"
+                _capture_initial_bom_total(session)
                 return _build_response_payload(session)
         raise HTTPException(status_code=404, detail=f"Project '{key}' not found in catalog")
 
@@ -140,6 +152,7 @@ def generate_bom(req: BomGenerateRequest, forge_session: Optional[str] = Cookie(
     session.bom_origin = plan["origin"]
     session.project = key
     session.stage = "bom"
+    _capture_initial_bom_total(session)
     return _build_response_payload(session)
 
 
