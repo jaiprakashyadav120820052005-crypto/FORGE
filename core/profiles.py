@@ -21,6 +21,7 @@ FIELDS = {
  "logic_v": ("V", "Logic voltage", 0.8, 6, "n", "controller driver sensor display comms input camera"), "vin_min_v": ("V", "Min input voltage", 0, 60, "n", "controller"),
  "vin_max_v": ("V", "Max input voltage", 0, 60, "n", "controller"),
  "supply_min_v": ("V", "Min supply", 0, 60, "n", "driver sensor power display comms camera input actuator"), "supply_max_v": ("V", "Max supply", 0, 60, "n", "driver sensor power display comms camera input actuator"),
+ "out_v": ("V", "Output voltage", 0, 60, "n", "power"),
  "drop_v": ("V", "Voltage drop", 0, 6, "n", "driver power"), "max_a": ("A", "Continuous current", 0.01, 500, "n", "driver battery power"),
  "peak_a": ("A", "Peak current", 0.01, 1000, "n", "driver battery power"), "channels": ("", "Channels", 1, 64, "n", "driver"),
  "eff_pct": ("%", "Bridge efficiency", 10, 100, "n", "driver power"), "pins_needed": ("pins", "Control pins needed", 0, 64, "n", "driver sensor display comms input camera actuator"),

@@ -16,7 +16,7 @@ def test_real_dataset_validates_with_no_errors():
     assert [x for x in sv.validate(RECS) if x["level"] == "error"] == []
 def test_dataset_counts_and_status_honest():
     st = [r["verification_status"] for r in RECS]
-    assert len(RECS) == 11 and st.count("partially_verified") == 2 and st.count("verified") == 0
+    assert len(RECS) == 12 and st.count("partially_verified") == 2 and st.count("verified") == 0
 def test_every_legacy_part_has_a_record():
     assert set(cat.by_legacy(RECS)) == {p["id"] for p in CATALOG}
 def test_duplicate_ids_detected():

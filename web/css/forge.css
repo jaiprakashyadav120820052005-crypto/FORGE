@@ -1702,6 +1702,19 @@ input[type="radio"] {
 }
 
 .recommendation-context { margin-top: 1rem; }
+.project-discovery-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 1rem; }
+.project-build-choice { margin: 0 0 1rem; border-color: rgba(255, 122, 26, 0.34); }
+.project-build-choice > h3 { margin: 0 0 6px; }
+.project-build-choice-bluetooth { display: flex; align-items: center; gap: 10px; margin: 12px 0 18px; }
+.project-build-choice-bluetooth input { width: 18px; height: 18px; accent-color: var(--primary-orange); }
+.project-build-choice-bluetooth label { cursor: pointer; }
+.project-build-choice-section { margin-bottom: 18px; }
+.project-build-choice-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 6px; }
+.project-build-choice-row > * { min-width: 0; }
+@media (max-width: 600px) {
+  .project-discovery-header { align-items: flex-start; flex-direction: column; }
+  .project-build-choice-row { grid-template-columns: 1fr; }
+}
 .recommendation-context-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2224,7 +2237,6 @@ input[type="radio"] {
 .build-resources { display: grid; gap: 16px; }
 .build-resources > .card, .build-resources > section { margin-top: 0 !important; }
 
-.optimizer-powerbank-note { padding: 10px 12px; border-left: 3px solid var(--primary-orange); background: rgba(255, 153, 51, 0.08); color: var(--text-secondary); }
 .build-safety-action { margin: 12px 0; padding: 12px; border: 1px solid var(--warning-border, var(--card-border)); border-radius: 10px; background: rgba(255, 153, 51, 0.08); }
 .build-safety-action .caption { margin: 0 0 8px; }
 

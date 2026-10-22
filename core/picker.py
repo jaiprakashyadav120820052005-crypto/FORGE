@@ -458,7 +458,7 @@ QUESTIONS = [
  ("languages", "Which programming languages do you use?", {"C / C++": "c_cpp", "Python": "python", "None yet": "none"}),
  ("schedule", "How much time do you have?", {}),
  ("budget", "What is your project budget?", {}),
- ("tools", "What tools or lab access do you have?", {"Soldering iron": "soldering_iron", "Multimeter": "multimeter", "3D printer": "3d_printer", "College lab": "college_lab", "Laptop only": "laptop_only"}),
+ ("tools", "What tools or lab access do you have?", {"Soldering iron": "soldering_iron", "Multimeter": "multimeter", "3D printer": "3d_printer", "College lab": "college_lab", "Laptop": "laptop"}),
  ("hardware", "Which hardware do you already own?", {"Arduino": "arduino", "ESP32": "esp32", "Raspberry Pi": "raspberry_pi", "STM32": "stm32"}),
  ("goal", "What is your goal, and are you working solo or in a team?", {"Learn": "learn", "Portfolio": "portfolio", "Internship": "internship", "Competition": "competition", "Final-year project": "final_year"}),
  ("interests", "Pick up to three areas that interest you.", {"Sensors": "sensing", "Robotics": "robotics", "Embedded": "embedded", "ML / vision": "vision", "Wireless / IoT": "iot", "Mechanics": "mechanics"}),
@@ -484,6 +484,9 @@ def normalize_survey_answers(answers):
         if isinstance(labels, str):
             labels = [labels]
         values = [options.get(label, label) for label in labels if label]
+        if key == "tools":
+            # Accept IDs/labels saved by older sessions and normalize to the current option ID.
+            values = ["laptop" if value in ("laptop_only", "Laptop only") else value for value in values]
         if key == "languages" and "none" in values and len(values) > 1:
             values.remove("none")
         profile[key] = values
@@ -619,10 +622,8 @@ def eligibility(project_key, profile):
         if project["build_hours"] > available:
             reasons.append(f"Needs about {project['build_hours']} hours; your deadline allows about {available:.0f}")
 
-    selected_tools = set(profile.get("tools", []))
-    if "laptop_only" in selected_tools:
-        available_tools = {"laptop"}
-    elif selected_tools:
+    selected_tools = {"laptop" if tool == "laptop_only" else tool for tool in profile.get("tools", [])}
+    if selected_tools:
         available_tools = selected_tools | {"laptop"}
         if "college_lab" in selected_tools:
             available_tools |= {"soldering_iron", "multimeter", "3d_printer"}

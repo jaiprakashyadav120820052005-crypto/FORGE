@@ -11,7 +11,7 @@ PERSONAS = [
     {"name": "IoT intern portfolio", "profile": {"career": ["iot"], "interests": ["iot", "embedded"], "languages": ["python"], "goal": ["internship", "portfolio"], "budget_inr": 10000}, "expect": {}},
     {"name": "sensing beginner", "profile": {"career": ["undecided"], "interests": ["sensing"], "languages": ["none"], "budget_inr": 3000}, "expect": {"max_cost_inr": 3000, "max_difficulty": 3}},
     {"name": "mechanics lab access", "profile": {"career": ["robotics"], "interests": ["mechanics"], "tools": ["college_lab"], "budget_inr": 25000}, "expect": {}},
-    {"name": "no tools laptop", "profile": {"career": ["embedded"], "interests": ["embedded"], "tools": ["laptop_only"], "budget_inr": 10000}, "expect": {}},
+    {"name": "laptop only", "profile": {"career": ["embedded"], "interests": ["embedded"], "tools": ["laptop"], "budget_inr": 10000}, "expect": {}},
     {"name": "tight schedule", "profile": {"career": ["robotics"], "interests": ["robotics"], "budget_inr": 12000, "schedule": {"hours_per_week": 3, "deadline_weeks": 4}}, "expect": {}},
     {"name": "long schedule", "profile": {"career": ["robotics"], "interests": ["robotics"], "budget_inr": 30000, "schedule": {"hours_per_week": 12, "deadline_weeks": 16}}, "expect": {}},
     {"name": "competition team", "profile": {"career": ["robotics"], "interests": ["robotics", "control"], "goal": ["competition"], "team": "Team", "budget_inr": 50000}, "expect": {}},
@@ -26,7 +26,7 @@ PERSONAS = [
     {"name": "budget constrained maker", "profile": {"career": ["sensing"], "interests": ["sensing"], "tools": ["soldering_iron"], "budget_inr": 1000}, "expect": {"max_cost_inr": 1000}},
     {"name": "high budget final year", "profile": {"career": ["robotics"], "interests": ["robotics", "vision"], "languages": ["python", "c_cpp"], "goal": ["final_year", "portfolio"], "team": "Team", "budget_inr": 100000}, "expect": {}},
     {"name": "career undecided with IoT interest", "profile": {"career": ["undecided"], "interests": ["iot"], "budget_inr": 6000}, "expect": {}},
-    {"name": "beginner no budget limit", "profile": {"career": ["embedded"], "interests": ["embedded"], "languages": ["none"], "tools": ["laptop_only"]}, "expect": {}},
+    {"name": "beginner with laptop", "profile": {"career": ["embedded"], "interests": ["embedded"], "languages": ["none"], "tools": ["laptop"]}, "expect": {}},
     {"name": "robotics moderate budget and time", "profile": {"career": ["robotics"], "interests": ["robotics", "sensing"], "experience": ["sensor_read", "motor_driver"], "budget_inr": 10000, "schedule": {"hours_per_week": 8, "deadline_weeks": 8}}, "expect": {}},
     {"name": "vision portfolio with lab", "profile": {"career": ["vision"], "interests": ["vision", "embedded"], "languages": ["python", "c_cpp"], "goal": ["portfolio"], "tools": ["college_lab"], "budget_inr": 25000}, "expect": {}},
 ]

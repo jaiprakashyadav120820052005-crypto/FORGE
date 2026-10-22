@@ -16,7 +16,7 @@ BASELINES = Path(__file__).with_name("baselines")
 EXPERIENCE = ["sensor_read", "soldering", "motor_driver", "breadboard", "raspberry_pi", "trained_model"]
 CAREERS = ["embedded", "robotics", "vision", "iot", "undecided"]
 INTERESTS = ["sensing", "robotics", "embedded", "vision", "iot", "mechanics"]
-TOOLS = ["soldering_iron", "multimeter", "3d_printer", "college_lab", "laptop_only"]
+TOOLS = ["soldering_iron", "multimeter", "3d_printer", "college_lab", "laptop"]
 BUDGETS = [1000, 2000, 5000, 10000, 20000, 50000, None]
 
 

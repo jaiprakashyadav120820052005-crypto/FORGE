@@ -95,11 +95,12 @@
 
       <!-- ── 1. DISCOVERY VIEW ── -->
       <section id="view-discovery" class="view-panel" data-feature="recommendations">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div class="project-discovery-header">
           <div>
             <h2>🎯 Project Discovery &amp; Planning Copilot</h2>
             <p class="text-secondary">Answer questions and optionally add your resume to get tailored project recommendations.</p>
           </div>
+          <button class="btn ghost" id="btn-skip-discovery" type="button">Skip questions · choose a project</button>
         </div>
 
         <!-- 9-Question Survey Card -->
@@ -155,9 +156,31 @@
 
         <div style="display:flex;gap:12px;margin-top:1rem;">
           <button class="btn primary" id="btn-get-recommendations">Recommend projects</button>
-          <button class="btn ghost" id="btn-skip-discovery">Skip to BOM</button>
         </div>
         <p id="survey-rank-status" class="caption" role="status" aria-live="polite"></p>
+
+        <section class="card project-build-choice" id="project-build-choice" aria-labelledby="project-build-choice-title">
+          <h3 id="project-build-choice-title">Choose a project directly</h3>
+          <p class="caption">Your maximum budget comes from survey question 5 above. If skipped, FORGE uses the project estimate when supplied, or ₹3,500 by default. Choose a catalog build or describe your own.</p>
+          <div class="project-build-choice-bluetooth">
+            <input type="checkbox" id="bom-bluetooth-toggle" style="width:18px;height:18px;">
+            <label for="bom-bluetooth-toggle" style="cursor:pointer;"><b>Requires Bluetooth</b></label>
+          </div>
+          <div class="project-build-choice-section">
+            <label for="select-catalog-project"><b>Choose from the project catalog</b></label>
+            <div class="project-build-choice-row">
+              <select id="select-catalog-project"></select>
+              <button class="btn primary" id="btn-generate-catalog-bom" type="button">Plan this project</button>
+            </div>
+          </div>
+          <div>
+            <label for="input-custom-build"><b>Or Ideate &amp; Plan Custom Build</b></label>
+            <div class="project-build-choice-row">
+              <input type="text" id="input-custom-build" placeholder="e.g. a plant watering robot, or a mini sumo bot">
+              <button class="btn" id="btn-plan-custom-build" type="button">Plan custom build</button>
+            </div>
+          </div>
+        </section>
       </section>
 
       <!-- ── 2. RESULTS VIEW ── -->
@@ -250,35 +273,6 @@
           </div>
         </div>
 
-        <!-- Catalog Selector & Ideation Input Card -->
-        <div class="card" id="bom-setup-panel">
-          <div class="grid-2" style="margin-bottom:14px;">
-            <div id="bom-budget-control">
-              <label><b>Budget (₹)</b></label>
-              <input type="number" id="bom-budget-input" value="3500" step="500" min="1000">
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:20px;">
-              <input type="checkbox" id="bom-bluetooth-toggle" style="width:18px;height:18px;">
-              <label for="bom-bluetooth-toggle" style="cursor:pointer;"><b>Requires Bluetooth</b></label>
-            </div>
-          </div>
-
-          <div style="margin-bottom:14px;">
-            <label><b>1 · Select Architecture from Catalog (168 pre-verified projects)</b></label>
-            <div style="display:flex;gap:10px;margin-top:6px;">
-              <select id="select-catalog-project"></select>
-              <button class="btn primary" id="btn-generate-catalog-bom">Generate BOM</button>
-            </div>
-          </div>
-
-          <div>
-            <label><b>2 · Or Ideate &amp; Plan Custom Build</b></label>
-            <div style="display:flex;gap:10px;margin-top:6px;">
-              <input type="text" id="input-custom-build" placeholder="e.g. a plant watering robot, or a mini sumo bot">
-              <button class="btn" id="btn-plan-custom-build">Plan new build</button>
-            </div>
-          </div>
-        </div>
         <div id="bom-origin-banner"></div>
 
         <!-- Summary Metrics Row -->
@@ -347,7 +341,6 @@
             </div>
             <button class="btn" id="btn-toggle-optimizer" type="button" aria-expanded="false" aria-controls="optimizer-content">Open optimizer</button>
           </div>
-          <button class="btn" id="btn-use-powerbank" type="button" hidden>Compare an existing 5V power bank</button>
           <div id="optimizer-content" hidden>
             <div class="optimizer-controls">
               <label>

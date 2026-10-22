@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     selectedStarProject: null,
     starsLoaded: false,
     activeBom: null,
-    userSelectedBom: false,
     completedProjects: [],
     recommendationResponse: null,
     optimizerOpen: false,
@@ -72,9 +71,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-universal-back')?.addEventListener('click', goBack);
   document.getElementById('btn-back-to-questions')?.addEventListener('click', goBack);
   document.getElementById('btn-back-from-competition')?.addEventListener('click', goBack);
-  document.getElementById('btn-skip-discovery')?.addEventListener('click', () => switchStage('bom'));
+  document.getElementById('btn-skip-discovery')?.addEventListener('click', () => {
+    document.getElementById('project-build-choice')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('select-catalog-project')?.focus({ preventScroll: true });
+  });
 
-  function switchStage(stageName, { recordHistory = true, bomMode = 'setup' } = {}) {
+  function switchStage(stageName, { recordHistory = true } = {}) {
     if (stageName === 'pick') stageName = 'discovery';
     const validStages = ['home', 'discovery', 'results', 'competition', 'stars', 'bom', 'build'];
     if (!validStages.includes(stageName)) {
@@ -93,10 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (stageName === 'discovery') renderSurveyStep(state.currentStep);
     if (stageName === 'competition') loadCompetitionEvents();
     if (stageName === 'stars') loadStarProjects();
-    if (stageName === 'bom') {
-      document.getElementById('bom-setup-panel').hidden = bomMode === 'guided';
-      if (!state.activeBom) loadInitialBom();
-    }
+    if (stageName === 'bom' && !state.activeBom) loadInitialBom();
     if (stageName === 'build') renderBuildGuide();
     updateWorkflowNavigation();
   }
@@ -343,10 +342,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   async function openGuidedBom(params) {
-    const bom = await api.generateBom(params);
-    state.userSelectedBom = true;
+    const surveyBudget = Number(state.answers.budget_inr);
+    const budget = Number.isFinite(surveyBudget) && surveyBudget > 0
+      ? Math.round(surveyBudget)
+      : (params.budget || 3500);
+    const bluetooth = params.bluetooth ?? Boolean(document.getElementById('bom-bluetooth-toggle')?.checked);
+    const bom = await api.generateBom({ ...params, budget, bluetooth });
     renderBomView(bom);
-    switchStage('bom', { bomMode: 'guided' });
+    switchStage('bom');
   }
 
   function goBack() {
@@ -564,40 +567,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  document.getElementById('btn-use-powerbank')?.addEventListener('click', async () => {
-    const button = document.getElementById('btn-use-powerbank');
-    button.disabled = true;
-    try {
-      const entry = Object.entries(state.activeBom?.parts || {}).find(([role, part]) =>
-        part && !part.none && (['battery', 'power'].includes(role) || ['battery', 'power'].includes(part.role))
-      );
-      if (!entry) return;
-      state.optimizerRole = entry[0];
-      state.optimizerOpen = true;
-      const content = document.getElementById('optimizer-content');
-      content.hidden = false;
-      const toggle = document.getElementById('btn-toggle-optimizer');
-      toggle.setAttribute('aria-expanded', 'true');
-      toggle.textContent = 'Close optimizer';
-      renderOptimizerRoles();
-      await loadOptimizerCandidates();
-      const select = document.getElementById('optimizer-part-select');
-      const bank = [...select.options].find(option => option.value === 'pow_power_bank');
-      if (!bank) {
-        document.getElementById('optimizer-message').textContent = 'This BOM has no battery role that can be replaced by the existing 5V power bank.';
-        return;
-      }
-      select.value = bank.value;
-      state.optimizerCandidate = bank.value;
-      await evaluateOptimizerSwap();
-      content.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } catch (err) {
-      document.getElementById('optimizer-message').textContent = `Could not compare the power bank: ${err.message}`;
-    } finally {
-      button.disabled = false;
-    }
-  });
-
   document.getElementById('optimizer-role-select')?.addEventListener('change', async event => {
     state.optimizerRole = event.target.value;
     state.optimizerEvaluation = null;
@@ -742,13 +711,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     headerDiv.className = 'optimizer-eval-header';
     headerDiv.innerHTML = `<h4>${escapeHtml(currentName)} &rarr; ${escapeHtml(candName)}</h4>`;
     result.appendChild(headerDiv);
-    if (state.optimizerCandidate === 'pow_power_bank') {
-      const bankNote = document.createElement('p');
-      bankNote.className = 'optimizer-powerbank-note';
-      bankNote.textContent = '₹0 assumes the club already owns this bank. FORGE only knows its nominal 5V default USB mode; exact output limits, current, capacity, and auto-shutoff are unknown. Check the label, avoid USB-PD voltage modes, and use a separately rated motor supply unless the bank and motor ratings are verified.';
-      result.appendChild(bankNote);
-    }
-
     // 2. Status Badge & Counts Row
     const badgeRow = document.createElement('div');
     badgeRow.className = 'optimizer-badge-row';
@@ -1582,14 +1544,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  function selectedBuildBudget() {
+    const budget = Number(state.answers.budget_inr);
+    return Number.isFinite(budget) && budget > 0 ? Math.round(budget) : 3500;
+  }
+
   document.getElementById('btn-generate-catalog-bom')?.addEventListener('click', async () => {
     const sel = document.getElementById('select-catalog-project');
-    const budget = parseInt(document.getElementById('bom-budget-input').value) || 3500;
+    const budget = selectedBuildBudget();
     const bt = document.getElementById('bom-bluetooth-toggle').checked;
     try {
       const bom = await api.generateBom({ project: sel.value, budget, bluetooth: bt });
-      state.userSelectedBom = true;
       renderBomView(bom);
+      switchStage('bom');
     } catch (err) {
       alert('Error generating BOM: ' + err.message);
     }
@@ -1599,15 +1566,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inp = document.getElementById('input-custom-build');
     const txt = (inp.value || '').trim();
     if (!txt) return;
-    const budget = parseInt(document.getElementById('bom-budget-input').value) || 3500;
+    const budget = selectedBuildBudget();
     const bt = document.getElementById('bom-bluetooth-toggle').checked;
     try {
       const bom = await api.generateBom({ custom_idea: txt, budget, bluetooth: bt });
       if (bom.status === 'suggest') {
         alert('Suggested similar catalog projects available.');
       } else {
-        state.userSelectedBom = true;
         renderBomView(bom);
+        switchStage('bom');
       }
     } catch (err) {
       alert('Planning custom build failed: ' + err.message);
@@ -1626,16 +1593,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderBomView(bom) {
     if (!bom) return;
     state.activeBom = bom;
-    const budgetControl = document.getElementById('bom-budget-control');
-    if (budgetControl) budgetControl.hidden = state.userSelectedBom;
     state.wiringData = null;
     state.optimizerEvaluation = null;
-    const powerBankAction = document.getElementById('btn-use-powerbank');
-    if (powerBankAction) {
-      const battery = Object.entries(bom.parts || {}).find(([role, part]) => part && !part.none &&
-        (['battery', 'power'].includes(role) || ['battery', 'power'].includes(part.role)));
-      powerBankAction.hidden = !battery || /power.?bank/i.test(`${battery?.[1]?.id || ''} ${battery?.[1]?.name || ''}`);
-    }
     updateWorkflowNavigation();
 
     const heading = document.getElementById('bom-project-heading');

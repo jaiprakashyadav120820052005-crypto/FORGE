@@ -22,7 +22,8 @@ def _candidates(parts, role):
     if not isinstance(current, dict) or current.get("none"):
         raise HTTPException(status_code=404, detail=f"Component role '{role}' not found in the active BOM")
     sensor_kind = current.get("kind") if current.get("role") == "sensor" else None
-    return opt.candidates(parts, current.get("role", role), sensor_kind)
+    return [candidate for candidate in opt.candidates(parts, current.get("role", role), sensor_kind)
+            if candidate.get("id") != "pow_power_bank"]
 
 
 def _find_candidate(parts, role, part_id):
