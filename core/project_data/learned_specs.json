@@ -708,6 +708,37 @@
       },
       "source": "gemini",
       "updated_at": "2026-10-22T08:35:11+00:00"
+    },
+    "arduino mega 2560": {
+      "name": "Arduino Mega 2560",
+      "specs": {
+        "vin_min_v": 7,
+        "vin_max_v": 12,
+        "logic_v": 5,
+        "interface": "USB"
+      },
+      "source": "Arduino official Mega 2560 Rev3 datasheet: https://docs.arduino.cc/resources/datasheets/A000067-datasheet.pdf",
+      "updated_at": "2026-10-22T09:44:49+00:00"
+    },
+    "5v 5a switching power supply": {
+      "name": "5V 5A Switching Power Supply",
+      "specs": {
+        "out_v": 5,
+        "out_a": 5,
+        "power_w": 25
+      },
+      "source": "Name-derived output rating (5V, 5A); no model-specific input range supplied",
+      "updated_at": "2026-10-22T09:44:49+00:00"
+    },
+    "breadboard power supply module": {
+      "name": "Breadboard Power Supply Module",
+      "specs": {
+        "supply_min_v": 6.5,
+        "supply_max_v": 12,
+        "max_a": 0.7
+      },
+      "source": "Addicore AD453 product specification: https://www.addicore.com/products/breadboard-power-supply-module",
+      "updated_at": "2026-10-22T09:44:49+00:00"
     }
   }
 }
