@@ -164,8 +164,8 @@ forge/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/jhony1122f/BuilderBot.git
-   cd BuilderBot
+   git clone https://github.com/jaiprakashyadav120820052005-crypto/FORGE.git
+   cd FORGE
    ```
 
 2. **Create and activate a virtual environment**:
@@ -206,7 +206,7 @@ forge/
    python app.py
    ```
    FORGE serves its vanilla HTML/CSS/JavaScript interface and FastAPI endpoints at
-   `http://127.0.0.1:8000`. For development, run `uvicorn server.main:app --reload`.
+   `http://127.0.0.1:8001` (configurable via `FORGE_PORT`). For development, run `uvicorn server.main:app --port 8001 --reload`.
 
 ---
 
