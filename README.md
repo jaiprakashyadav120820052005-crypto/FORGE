@@ -2,6 +2,10 @@
 
 **AI Engineering Track · Team FORGE: Aditya Raj, Jai Prakash, Sidhant**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://forge-y8xa.onrender.com)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/jaiprakashyadav120820052005-crypto/FORGE)
+
+> 🚀 **Live Demo**: [https://forge-y8xa.onrender.com](https://forge-y8xa.onrender.com)  
 > **AI reads. Rules decide. Physics validates. Every number has verifiable proof.**
 
 ---
@@ -160,7 +164,10 @@ forge/
 - Python 3.11 or 3.12 (Python 3.12 recommended)
 - Git
 
-### Quickstart
+### 🚀 Live Deployment
+Access the running application online: **[https://forge-y8xa.onrender.com](https://forge-y8xa.onrender.com)**
+
+### Quickstart (Local Development)
 
 1. **Clone the repository**:
    ```bash

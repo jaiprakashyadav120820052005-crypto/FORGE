@@ -739,6 +739,100 @@
       },
       "source": "Addicore AD453 product specification: https://www.addicore.com/products/breadboard-power-supply-module",
       "updated_at": "2026-10-22T09:44:49+00:00"
+    },
+    "1 10 rc car chassis kit": {
+      "name": "1/10 RC Car Chassis Kit",
+      "specs": {
+        "scale": 110,
+        "material": "carbon fiber",
+        "length_mm": 400,
+        "width_mm": 200
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "lipo battery 3s": {
+      "name": "LiPo Battery 3S",
+      "specs": {
+        "supply_min_v": 9,
+        "supply_max_v": 12.6,
+        "capacity_mah": 5000,
+        "discharge_c": 50
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "lipo battery charger": {
+      "name": "LiPo Battery Charger",
+      "specs": {
+        "supply_min_v": 11,
+        "supply_max_v": 18,
+        "power_w": 80
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "2d lidar sensor": {
+      "name": "2D LiDAR Sensor",
+      "specs": {
+        "range_cm": 1200,
+        "interface": "USB",
+        "supply_min_v": 4.8,
+        "supply_max_v": 5.2,
+        "current_ma": 500
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "single board computer": {
+      "name": "Single Board Computer",
+      "specs": {
+        "logic_v": 5,
+        "supply_min_v": 5,
+        "supply_max_v": 5,
+        "current_ma": 4000
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "microcontroller board": {
+      "name": "Microcontroller Board",
+      "specs": {
+        "logic_v": 5,
+        "supply_min_v": 7,
+        "supply_max_v": 12,
+        "interface": "UART"
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "dc dc buck converter": {
+      "name": "DC-DC Buck Converter",
+      "specs": {
+        "supply_min_v": 4.5,
+        "supply_max_v": 35,
+        "logic_v": 5,
+        "max_a": 3
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "wireless gamepad controller": {
+      "name": "Wireless Gamepad Controller",
+      "specs": {
+        "interface": "USB",
+        "range_cm": 1000
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
+    },
+    "jumper wires and connectors": {
+      "name": "Jumper Wires and Connectors",
+      "specs": {
+        "length_mm": 200
+      },
+      "source": "gemini",
+      "updated_at": "2026-10-27T17:38:54+00:00"
     }
   }
 }
